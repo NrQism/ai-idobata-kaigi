@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI井戸端会議</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;700;900&family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #EFEAE1;
+    --surface: #FBF8F3;
+    --surface-2: #F2ECE0;
+    --ink: #2A2723;
+    --ink-muted: #7C7367;
+    --border: #D2C8B4;
+    --danger: #A6483A;
+    --danger-bg: #F3E4E0;
+
+    --c-chatgpt: #3F6B5A;
+    --c-chatgpt-bg: #E3EDE7;
+    --c-claude: #7A5C8C;
+    --c-claude-bg: #EEE6F2;
+    --c-gemini: #3A5A80;
+    --c-gemini-bg: #E3E9F1;
+    --c-perplexity: #A15A2E;
+    --c-perplexity-bg: #F1E4D8;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1E1B17;
+      --surface: #362F28;
+      --surface-2: #423A30;
+      --ink: #F2ECE1;
+      --ink-muted: #C7BBA9;
+      --border: #5A4E40;
+      --danger: #DB8B7C;
+      --danger-bg: #3A2622;
+
+      --c-chatgpt: #7FB5A0;
+      --c-chatgpt-bg: #253830;
+      --c-claude: #C0A3D3;
+      --c-claude-bg: #362C3D;
+      --c-gemini: #8FB0DA;
+      --c-gemini-bg: #262F3E;
+      --c-perplexity: #D69B6E;
+      --c-perplexity-bg: #3D2E22;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1E1B17;
+    --surface: #362F28;
+    --surface-2: #423A30;
+    --ink: #F2ECE1;
+    --ink-muted: #C7BBA9;
+    --border: #5A4E40;
+    --danger: #DB8B7C;
+    --danger-bg: #3A2622;
+
+    --c-chatgpt: #7FB5A0;
+    --c-chatgpt-bg: #253830;
+    --c-claude: #C0A3D3;
+    --c-claude-bg: #362C3D;
+    --c-gemini: #8FB0DA;
+    --c-gemini-bg: #262F3E;
+    --c-perplexity: #D69B6E;
+    --c-perplexity-bg: #3D2E22;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  .app {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 16px 140px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    padding-top: 20px;
+    padding-bottom: 12px;
+    margin: 0 -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    border-bottom: 1px solid transparent;
+  }
+  .sticky-top.is-stuck {
+    border-bottom-color: var(--border);
+    box-shadow: 0 6px 12px -8px rgba(0, 0, 0, 0.25);
+  }
+
+  .app-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-top: 6px;
+  }
+
+  .app-header h1 {
+    font-family: 'Zen Old Mincho', serif;
+    font-weight: 900;
+    font-size: 1.7rem;
+    margin: 0;
+    letter-spacing: 0.03em;
+  }
+
+  .header-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .turn-badge {
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 4px 12px;
+    white-space: nowrap;
+  }
+
+  .ghost-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--ink-muted);
+    border-radius: 100px;
+    padding: 5px 12px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .ghost-btn:hover { color: var(--danger); border-color: var(--danger); }
+
+  .tagline {
+    margin: -8px 0 0;
+    color: var(--ink-muted);
+    font-size: 0.88rem;
+  }
+
+  /* 議題まわり */
+  .topic-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+  }
+
+  .topic-bar .label {
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    margin-bottom: 8px;
+  }
+
+  .topic-bar textarea {
+    width: 100%;
+    min-height: 64px;
+    resize: vertical;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--ink);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-family: inherit;
+    font-size: 0.95rem;
+  }
+
+  .topic-bar .topic-display {
+    font-size: 1.02rem;
+    font-family: 'Shippori Mincho', serif;
+  }
+
+  .topic-bar .row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+  }
+
+  .member-select {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .member-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 5px 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    user-select: none;
+    background: var(--surface-2);
+    color: var(--ink-muted);
+  }
+
+  .member-chip input {
+    accent-color: var(--ink);
+  }
+
+  .member-chip.checked.chatgpt { color: var(--c-chatgpt); background: var(--c-chatgpt-bg); border-color: transparent; }
+  .member-chip.checked.claude { color: var(--c-claude); background: var(--c-claude-bg); border-color: transparent; }
+  .member-chip.checked.gemini { color: var(--c-gemini); background: var(--c-gemini-bg); border-color: transparent; }
+  .member-chip.checked.perplexity { color: var(--c-perplexity); background: var(--c-perplexity-bg); border-color: transparent; }
+
+  .primary-btn {
+    background: var(--ink);
+    color: var(--surface);
+    border: none;
+    border-radius: 100px;
+    padding: 9px 20px;
+    font-size: 0.92rem;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 500;
+  }
+  .primary-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .primary-btn:not(:disabled):hover { opacity: 0.85; }
+
+  .actions-bar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  /* ログ */
+  .log-area {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .log-load-more {
+    text-align: center;
+    padding: 4px 0 6px;
+  }
+
+  .empty-state {
+    text-align: center;
+    color: var(--ink-muted);
+    font-size: 0.9rem;
+    padding: 30px 10px;
+  }
+
+  .log-entry {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left-width: 4px;
+    border-radius: 10px;
+    padding: 16px 16px;
+  }
+  .log-entry.chatgpt { border-left-color: var(--c-chatgpt); }
+  .log-entry.claude { border-left-color: var(--c-claude); }
+  .log-entry.gemini { border-left-color: var(--c-gemini); }
+  .log-entry.perplexity { border-left-color: var(--c-perplexity); }
+  .log-entry.moderator {
+    border-left-color: var(--border);
+    border-left-style: dashed;
+    background: var(--surface-2);
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .log-entry.moderator .text {
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+  }
+
+  .log-entry .meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 0.8rem;
+  }
+
+  .speaker-tag {
+    font-weight: 700;
+    padding: 3px 11px;
+    border-radius: 100px;
+    font-size: 0.82rem;
+  }
+  .speaker-tag.chatgpt { color: var(--c-chatgpt); background: var(--c-chatgpt-bg); }
+  .speaker-tag.claude { color: var(--c-claude); background: var(--c-claude-bg); }
+  .speaker-tag.gemini { color: var(--c-gemini); background: var(--c-gemini-bg); }
+  .speaker-tag.perplexity { color: var(--c-perplexity); background: var(--c-perplexity-bg); }
+  .speaker-tag.moderator { color: var(--ink-muted); background: var(--surface); font-style: italic; }
+
+  .log-entry .time,
+  .log-entry .turn-no {
+    color: var(--ink-muted);
+    font-weight: 500;
+  }
+
+  .log-entry .text {
+    white-space: pre-wrap;
+    font-size: 0.97rem;
+  }
+
+  /* 発言パネル(下部固定) */
+  .turn-panel {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+  }
+
+  .turn-panel-inner {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .turn-topic {
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .speaker-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .speaker-badge.chatgpt { background: var(--c-chatgpt-bg); color: var(--c-chatgpt); }
+  .speaker-badge.claude { background: var(--c-claude-bg); color: var(--c-claude); }
+  .speaker-badge.gemini { background: var(--c-gemini-bg); color: var(--c-gemini); }
+  .speaker-badge.perplexity { background: var(--c-perplexity-bg); color: var(--c-perplexity); }
+
+  .turn-panel textarea {
+    width: 100%;
+    min-height: 76px;
+    max-height: 200px;
+    resize: vertical;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--ink);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-family: inherit;
+    font-size: 0.93rem;
+  }
+
+  .aside-textarea {
+    min-height: 44px !important;
+    margin-top: 8px;
+    font-size: 0.85rem !important;
+    border-style: dashed !important;
+  }
+
+  .turn-panel .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .hint {
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+  }
+
+  .preview-box {
+    margin-top: 12px;
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: var(--surface-2);
+  }
+
+  .preview-box .label {
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .preview-box textarea {
+    width: 100%;
+    min-height: 100px;
+    max-height: 220px;
+    border: none;
+    background: transparent;
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 0.85rem;
+    resize: vertical;
+    padding: 0;
+  }
+
+  .small-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--ink);
+    border-radius: 100px;
+    padding: 3px 10px;
+    font-size: 0.76rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .small-btn:hover { border-color: var(--ink); }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 190px;
+    transform: translateX(-50%) translateY(10px);
+    background: var(--ink);
+    color: var(--surface);
+    padding: 8px 18px;
+    border-radius: 100px;
+    font-size: 0.85rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 50;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  @media (max-width: 480px) {
+    .app-header h1 { font-size: 1.4rem; }
+  }
+
+  .back-to-top {
+    position: fixed;
+    right: 16px;
+    bottom: 190px;
+    z-index: 30;
+    background: var(--ink);
+    color: var(--surface);
+    border: none;
+    border-radius: 100px;
+    padding: 8px 14px;
+    font-size: 0.78rem;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  }
+  .back-to-top:hover { opacity: 0.9; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="sticky-top" id="stickyTop">
+    <header class="app-header">
+      <div>
+        <h1>AI井戸端会議</h1>
+        <p class="tagline">ChatGPT・Claude・Gemini・Perplexityのあいだをコピペでつなぐ、人間が議長の会議</p>
+      </div>
+      <div class="header-meta">
+        <span class="turn-badge" id="turnBadge">ターン 0</span>
+        <button class="ghost-btn" id="resetBtn">リセット</button>
+      </div>
+    </header>
+
+    <section class="topic-bar" id="topicBar"></section>
+
+    <div class="actions-bar" id="actionsBar" style="display:none;"></div>
+  </div>
+
+  <div id="utilityPreviewContainer" style="display:none;"></div>
+
+  <main class="log-area" id="logArea"></main>
+</div>
+
+<button class="back-to-top" id="backToTop" style="display:none;" aria-label="上に戻る">▲ 議題</button>
+
+<section class="turn-panel" id="turnPanel" style="display:none;">
+  <div class="turn-panel-inner" id="turnPanelInner"></div>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  var STORAGE_KEY = 'aiIdobataState_v1';
+  var ALL_MEMBERS = ['ChatGPT', 'Claude', 'Gemini', 'Perplexity'];
+  var DEFAULT_ORDER = ['ChatGPT', 'Claude', 'Gemini'];
+  var CLASS = { 'ChatGPT': 'chatgpt', 'Claude': 'claude', 'Gemini': 'gemini', 'Perplexity': 'perplexity' };
+  var ICON = { 'ChatGPT': '●', 'Claude': '◆', 'Gemini': '▲', 'Perplexity': '■' };
+  var LOG_PAGE_SIZE = 6;
+  var logExpanded = false;
+
+  var state = loadState() || {
+    topic: '',
+    started: false,
+    turnIndex: 0,
+    turnCount: 0,
+    log: [],
+    lastGenerated: '',
+    lastGeneratedFor: '',
+    order: DEFAULT_ORDER.slice()
+  };
+  if (!state.order || !state.order.length) {
+    state.order = DEFAULT_ORDER.slice();
+  }
+
+  var utilityPreview = null;
+  var downloadsApi = null;
+  (function initCapabilities() {
+    try {
+      window.claude.use('downloads').then(function (api) {
+        downloadsApi = api;
+      });
+    } catch (e) {
+      downloadsApi = null;
+    }
+  })();
+
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      showToast('保存に失敗しましたわ');
+    }
+  }
+
+  function showToast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._timer);
+    showToast._timer = setTimeout(function () {
+      t.classList.remove('show');
+    }, 1800);
+  }
+
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+  function copyToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(function () {
+        showToast('コピーしましたわ');
+      }).catch(function () {
+        fallbackCopy(text);
+        showToast('コピーしましたわ');
+      });
+    } else {
+      fallbackCopy(text);
+      showToast('コピーしましたわ');
+    }
+  }
+
+  function buildPrompt(topic, prevSpeaker, prevText, asideText) {
+    if (!prevSpeaker) {
+      return 'あなたはAI井戸端会議の参加者です。\n\n' +
+        '今回の議題:\n「' + topic + '」\n\n' +
+        'あなた自身の考えを自由に述べてください。\n\n' +
+        '単なる説明ではなく、あなた独自の視点や、踏み込んだ意見も歓迎します。';
+    }
+    var asidePart = '';
+    if (asideText) {
+      asidePart = '\nなお、議長(この会議を進行している人間)から次のようなひとことがありました。\n\n' +
+        '「' + asideText + '」\n\n' +
+        '軽い相槌や合いの手なので、深く触れる必要はありませんが、頭には置いておいてください。\n';
+    }
+    return 'あなたはAI井戸端会議の参加者です。\n\n' +
+      '今回の議題:\n「' + topic + '」\n\n' +
+      '以下は' + prevSpeaker + 'の発言です。\n\n' +
+      '――――――――\n' + prevText + '\n――――――――\n' +
+      asidePart + '\n' +
+      'この発言を踏まえて、あなた自身の考えを述べてください。\n\n' +
+      '単なる要約ではなく、新しい観点や反論も歓迎します。';
+  }
+
+  function fmtTime(ts) {
+    var d = new Date(ts);
+    var h = String(d.getHours()).padStart(2, '0');
+    var m = String(d.getMinutes()).padStart(2, '0');
+    return h + ':' + m;
+  }
+
+  function currentSpeaker() {
+    return state.order[state.turnIndex];
+  }
+
+  function render() {
+    renderTopicBar();
+    renderActionsBar();
+    renderUtilityPreview();
+    renderLog();
+    renderTurnPanel();
+    document.getElementById('turnBadge').textContent = 'ターン ' + state.turnCount;
+  }
+
+  function renderActionsBar() {
+    var el = document.getElementById('actionsBar');
+    if (state.log.length === 0) {
+      el.style.display = 'none';
+      el.innerHTML = '';
+      return;
+    }
+    el.style.display = 'flex';
+    el.innerHTML =
+      '<button class="ghost-btn" id="summaryBtn">まとめを依頼する文章を作る</button>' +
+      '<button class="ghost-btn" id="exportBtn">NotebookLM用に書き出す</button>';
+    document.getElementById('summaryBtn').addEventListener('click', onSummary);
+    document.getElementById('exportBtn').addEventListener('click', onExport);
+  }
+
+  function renderUtilityPreview() {
+    var container = document.getElementById('utilityPreviewContainer');
+    if (!utilityPreview) {
+      container.style.display = 'none';
+      container.innerHTML = '';
+      return;
+    }
+    container.style.display = 'block';
+    container.innerHTML =
+      '<div class="preview-box">' +
+      '<div class="label"><span>' + escapeHtml(utilityPreview.label) + '</span>' +
+      '<span><button class="small-btn" id="utilCopyBtn">コピー</button> ' +
+      '<button class="small-btn" id="utilCloseBtn">閉じる</button></span></div>' +
+      '<textarea readonly id="utilPreviewText">' + escapeHtml(utilityPreview.text) + '</textarea>' +
+      '</div>';
+    document.getElementById('utilCopyBtn').addEventListener('click', function () {
+      copyToClipboard(utilityPreview.text);
+    });
+    document.getElementById('utilCloseBtn').addEventListener('click', function () {
+      utilityPreview = null;
+      renderUtilityPreview();
+    });
+  }
+
+  function buildSummaryPrompt() {
+    var body = state.log.map(function (e) {
+      return '【' + e.speaker + '】\n' + e.text;
+    }).join('\n\n');
+    return 'あなたはAI井戸端会議の記録係です。\n\n' +
+      '今回の議題:\n「' + state.topic + '」\n\n' +
+      'これまでの発言は以下の通りです。\n\n' + body + '\n\n' +
+      'ここまでの議論をまとめてください。各参加者の主張の要点、意見が分かれた点、' +
+      '特に面白かった視点を整理してください。';
+  }
+
+  function onSummary() {
+    var text = buildSummaryPrompt();
+    utilityPreview = { label: 'まとめ依頼文', text: text };
+    renderUtilityPreview();
+    copyToClipboard(text);
+  }
+
+  function buildExportDocument() {
+    var lines = [];
+    lines.push('# AI井戸端会議 議事録');
+    lines.push('');
+    lines.push('議題: ' + state.topic);
+    lines.push('');
+    lines.push('総ターン数: ' + state.turnCount);
+    lines.push('');
+    lines.push('## 発言記録');
+    lines.push('');
+    state.log.forEach(function (e) {
+      lines.push('### #' + e.turn + ' ' + e.speaker + '（' + fmtTime(e.time) + '）');
+      lines.push('');
+      lines.push(e.text);
+      lines.push('');
+    });
+    return lines.join('\n');
+  }
+
+  function buildExportFilename() {
+    var d = new Date();
+    function pad(n) { return String(n).padStart(2, '0'); }
+    return 'ai-idobata-kaigi_' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) +
+      '_' + pad(d.getHours()) + pad(d.getMinutes()) + '.md';
+  }
+
+  function onExport() {
+    var text = buildExportDocument();
+    var filename = buildExportFilename();
+    if (downloadsApi) {
+      downloadsApi.save({ filename: filename, data: text }).then(function () {
+        showToast('書き出しましたわ');
+      }).catch(function (err) {
+        if (err && err.code === 'declined') return;
+        utilityPreview = { label: 'NotebookLM用資料', text: text };
+        renderUtilityPreview();
+        copyToClipboard(text);
+      });
+    } else {
+      utilityPreview = { label: 'NotebookLM用資料', text: text };
+      renderUtilityPreview();
+      copyToClipboard(text);
+    }
+  }
+
+  function renderTopicBar() {
+    var el = document.getElementById('topicBar');
+    if (!state.started) {
+      var chipsHtml = ALL_MEMBERS.map(function (name) {
+        var cls = CLASS[name];
+        var checked = state.order.indexOf(name) !== -1;
+        return '<label class="member-chip' + (checked ? ' checked ' + cls : '') + '" data-member="' + name + '">' +
+          '<input type="checkbox" value="' + name + '"' + (checked ? ' checked' : '') + '>' + name +
+          '</label>';
+      }).join('');
+
+      el.innerHTML =
+        '<div class="label">議題を決めてくださいまし</div>' +
+        '<textarea id="topicInput" placeholder="例：AIだけで100年間活動したら何が起こるか？">' +
+        escapeHtml(state.topic) + '</textarea>' +
+        '<div class="label" style="margin-top:12px;">参加させるAIを選んでくださいまし(2人以上)</div>' +
+        '<div class="member-select" id="memberSelect">' + chipsHtml + '</div>' +
+        '<div class="row"><button class="primary-btn" id="startBtn">会議を始める</button></div>';
+
+      document.getElementById('topicInput').addEventListener('input', function (e) {
+        state.topic = e.target.value;
+      });
+      document.getElementById('memberSelect').querySelectorAll('input[type="checkbox"]').forEach(function (box) {
+        box.addEventListener('change', function () {
+          var name = box.value;
+          var idx = state.order.indexOf(name);
+          if (box.checked && idx === -1) {
+            state.order = ALL_MEMBERS.filter(function (m) {
+              return state.order.indexOf(m) !== -1 || m === name;
+            });
+          } else if (!box.checked && idx !== -1) {
+            state.order.splice(idx, 1);
+          }
+          renderTopicBar();
+        });
+      });
+      document.getElementById('startBtn').addEventListener('click', onStart);
+    } else {
+      el.innerHTML =
+        '<div class="label">議題</div>' +
+        '<div class="topic-display">' + escapeHtml(state.topic) + '</div>';
+    }
+  }
+
+  function onStart() {
+    var topic = (state.topic || '').trim();
+    if (!topic) {
+      showToast('議題を入力してくださいまし');
+      return;
+    }
+    if (!state.order || state.order.length < 2) {
+      showToast('参加AIを2人以上選んでくださいまし');
+      return;
+    }
+    state.topic = topic;
+    state.started = true;
+    state.turnIndex = 0;
+    var text = buildPrompt(topic, null, null);
+    state.lastGenerated = text;
+    state.lastGeneratedFor = state.order[0];
+    saveState();
+    render();
+    copyToClipboard(text);
+  }
+
+  function renderLog() {
+    var el = document.getElementById('logArea');
+    if (state.log.length === 0) {
+      el.innerHTML = '<p class="empty-state">議題を決めて、会議を始めてくださいまし。発言が積み重なるとここに並びますわ。</p>';
+      return;
+    }
+
+    var entries = state.log;
+    var hiddenCount = 0;
+    if (!logExpanded && entries.length > LOG_PAGE_SIZE) {
+      hiddenCount = entries.length - LOG_PAGE_SIZE;
+      entries = entries.slice(-LOG_PAGE_SIZE);
+    }
+
+    var loadMoreHtml = '';
+    if (hiddenCount > 0) {
+      loadMoreHtml = '<div class="log-load-more">' +
+        '<button class="ghost-btn" id="logLoadMoreBtn">これより前を表示（あと' + hiddenCount + '件）</button>' +
+        '</div>';
+    } else if (logExpanded && state.log.length > LOG_PAGE_SIZE) {
+      loadMoreHtml = '<div class="log-load-more">' +
+        '<button class="ghost-btn" id="logCollapseBtn">直近' + LOG_PAGE_SIZE + '件だけ表示</button>' +
+        '</div>';
+    }
+
+    var html = entries.map(function (entry) {
+      var cls = entry.mod ? 'moderator' : (CLASS[entry.speaker] || '');
+      var turnLabel = entry.mod ? 'ひとこと' : ('#' + entry.turn);
+      var icon = entry.mod ? '…' : (ICON[entry.speaker] || '');
+      return '<div class="log-entry ' + cls + '">' +
+        '<div class="meta">' +
+        '<span class="turn-no">' + turnLabel + '</span>' +
+        '<span class="speaker-tag ' + cls + '">' + icon + ' ' + entry.speaker + '</span>' +
+        '<span class="time">' + fmtTime(entry.time) + '</span>' +
+        '</div>' +
+        '<div class="text">' + escapeHtml(entry.text) + '</div>' +
+        '</div>';
+    }).join('');
+
+    el.innerHTML = loadMoreHtml + html;
+
+    var loadMoreBtn = document.getElementById('logLoadMoreBtn');
+    if (loadMoreBtn) {
+      loadMoreBtn.addEventListener('click', function () {
+        logExpanded = true;
+        renderLog();
+      });
+    }
+    var collapseBtn = document.getElementById('logCollapseBtn');
+    if (collapseBtn) {
+      collapseBtn.addEventListener('click', function () {
+        logExpanded = false;
+        renderLog();
+        var stickyTop = document.getElementById('stickyTop');
+        stickyTop.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  }
+
+  function renderTurnPanel() {
+    var panel = document.getElementById('turnPanel');
+    var inner = document.getElementById('turnPanelInner');
+
+    if (!state.started) {
+      panel.style.display = 'none';
+      return;
+    }
+    panel.style.display = 'block';
+
+    var speaker = currentSpeaker();
+    var cls = CLASS[speaker];
+
+    var previewHtml = '';
+    if (state.lastGenerated) {
+      previewHtml =
+        '<div class="preview-box">' +
+        '<div class="label"><span>' + state.lastGeneratedFor + '用の文章</span>' +
+        '<button class="small-btn" id="recopyBtn">再コピー</button></div>' +
+        '<textarea readonly id="previewText">' + escapeHtml(state.lastGenerated) + '</textarea>' +
+        '</div>';
+    }
+
+    inner.innerHTML =
+      '<div class="turn-topic">議題: ' + escapeHtml(state.topic) + '</div>' +
+      '<span class="speaker-badge ' + cls + '">' + (ICON[speaker] || '') + ' ' + speaker + 'の番ですわ</span>' +
+      '<textarea id="replyInput" placeholder="' + speaker + 'の発言をここに貼り付けてくださいまし"></textarea>' +
+      '<textarea id="asideInput" class="aside-textarea" placeholder="ひとこと・相槌があれば(任意、次のAIにも軽く伝わりますの)"></textarea>' +
+      '<div class="row">' +
+      '<span class="hint">貼り付けたら次のAI用の文章を作りますの</span>' +
+      '<button class="primary-btn" id="nextBtn">次のAI用にコピー</button>' +
+      '</div>' +
+      previewHtml;
+
+    document.getElementById('nextBtn').addEventListener('click', onNext);
+    var recopy = document.getElementById('recopyBtn');
+    if (recopy) {
+      recopy.addEventListener('click', function () {
+        copyToClipboard(state.lastGenerated);
+      });
+    }
+  }
+
+  function onNext() {
+    var input = document.getElementById('replyInput');
+    var text = input.value.trim();
+    if (!text) {
+      showToast(currentSpeaker() + 'の発言を貼り付けてくださいまし');
+      return;
+    }
+    var asideInput = document.getElementById('asideInput');
+    var asideText = asideInput ? asideInput.value.trim() : '';
+
+    var speaker = currentSpeaker();
+    state.turnCount += 1;
+    state.log.push({
+      turn: state.turnCount,
+      speaker: speaker,
+      time: Date.now(),
+      text: text
+    });
+
+    if (asideText) {
+      state.log.push({
+        turn: null,
+        speaker: '議長',
+        time: Date.now(),
+        text: asideText,
+        mod: true
+      });
+    }
+
+    state.turnIndex = (state.turnIndex + 1) % state.order.length;
+    var nextSpeaker = currentSpeaker();
+    var promptText = buildPrompt(state.topic, speaker, text, asideText);
+    state.lastGenerated = promptText;
+    state.lastGeneratedFor = nextSpeaker;
+
+    saveState();
+    render();
+    copyToClipboard(promptText);
+
+    var logArea = document.getElementById('logArea');
+    logArea.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }
+
+  function onReset() {
+    if (!confirm('会議のログをすべて削除して最初からやり直しますの。よろしいですか？')) return;
+    state = {
+      topic: '',
+      started: false,
+      turnIndex: 0,
+      turnCount: 0,
+      log: [],
+      lastGenerated: '',
+      lastGeneratedFor: '',
+      order: DEFAULT_ORDER.slice()
+    };
+    logExpanded = false;
+    saveState();
+    render();
+    showToast('リセットしましたわ');
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  document.getElementById('resetBtn').addEventListener('click', onReset);
+
+  (function initScrollWatch() {
+    var stickyTop = document.getElementById('stickyTop');
+    var backToTop = document.getElementById('backToTop');
+    window.addEventListener('scroll', function () {
+      var scrolled = window.scrollY > 40;
+      stickyTop.classList.toggle('is-stuck', scrolled);
+      backToTop.style.display = window.scrollY > 400 ? 'block' : 'none';
+    }, { passive: true });
+    backToTop.addEventListener('click', function () {
+      stickyTop.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  })();
+
+  render();
+})();
+</script>
+
+</body>
+</html>
