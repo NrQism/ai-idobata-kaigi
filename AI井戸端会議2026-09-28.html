@@ -1,0 +1,2633 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI井戸端会議</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;700;900&family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #EFEAE1;
+    --surface: #FBF8F3;
+    --surface-2: #F2ECE0;
+    --ink: #2A2723;
+    --ink-muted: #7C7367;
+    --border: #D2C8B4;
+    --danger: #A6483A;
+    --danger-bg: #F3E4E0;
+
+    --c-chatgpt: #3F6B5A;
+    --c-chatgpt-bg: #E3EDE7;
+    --c-claude: #7A5C8C;
+    --c-claude-bg: #EEE6F2;
+    --c-gemini: #3A5A80;
+    --c-gemini-bg: #E3E9F1;
+    --c-perplexity: #A15A2E;
+    --c-perplexity-bg: #F1E4D8;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1E1B17;
+      --surface: #362F28;
+      --surface-2: #423A30;
+      --ink: #F2ECE1;
+      --ink-muted: #C7BBA9;
+      --border: #5A4E40;
+      --danger: #DB8B7C;
+      --danger-bg: #3A2622;
+
+      --c-chatgpt: #7FB5A0;
+      --c-chatgpt-bg: #253830;
+      --c-claude: #C0A3D3;
+      --c-claude-bg: #362C3D;
+      --c-gemini: #8FB0DA;
+      --c-gemini-bg: #262F3E;
+      --c-perplexity: #D69B6E;
+      --c-perplexity-bg: #3D2E22;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1E1B17;
+    --surface: #362F28;
+    --surface-2: #423A30;
+    --ink: #F2ECE1;
+    --ink-muted: #C7BBA9;
+    --border: #5A4E40;
+    --danger: #DB8B7C;
+    --danger-bg: #3A2622;
+
+    --c-chatgpt: #7FB5A0;
+    --c-chatgpt-bg: #253830;
+    --c-claude: #C0A3D3;
+    --c-claude-bg: #362C3D;
+    --c-gemini: #8FB0DA;
+    --c-gemini-bg: #262F3E;
+    --c-perplexity: #D69B6E;
+    --c-perplexity-bg: #3D2E22;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  .app {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 16px 140px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    padding-top: 20px;
+    padding-bottom: 12px;
+    margin: 0 -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    border-bottom: 1px solid transparent;
+  }
+  .sticky-top.is-stuck {
+    border-bottom-color: var(--border);
+    box-shadow: 0 6px 12px -8px rgba(0, 0, 0, 0.25);
+  }
+
+  .app-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-top: 6px;
+  }
+
+  .app-header h1 {
+    font-family: 'Zen Old Mincho', serif;
+    font-weight: 900;
+    font-size: 1.7rem;
+    margin: 0;
+    letter-spacing: 0.03em;
+  }
+
+  .header-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .turn-badge {
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 4px 12px;
+    white-space: nowrap;
+  }
+
+  .ghost-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--ink-muted);
+    border-radius: 100px;
+    padding: 5px 12px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .ghost-btn:hover { color: var(--danger); border-color: var(--danger); }
+
+  .tagline {
+    margin: -8px 0 0;
+    color: var(--ink-muted);
+    font-size: 0.88rem;
+  }
+
+  /* 議題まわり */
+  .topic-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+  }
+
+  .topic-bar .label {
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    margin-bottom: 8px;
+  }
+
+  .topic-bar textarea {
+    width: 100%;
+    min-height: 64px;
+    resize: vertical;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--ink);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-family: inherit;
+    font-size: 0.95rem;
+  }
+
+  .topic-bar .topic-display {
+    font-size: 1.02rem;
+    font-family: 'Shippori Mincho', serif;
+  }
+
+  .topic-bar .row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+  }
+
+  .log-filter {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 2px;
+  }
+
+  .tag-badge {
+    font-size: 0.72rem;
+    border-radius: 100px;
+    padding: 2px 9px;
+    background: var(--surface-2);
+    color: var(--ink-muted);
+    white-space: nowrap;
+  }
+  .tag-badge.intrude-badge { color: var(--danger); background: var(--danger-bg); }
+  .tag-badge.derail-badge { font-style: italic; }
+
+  .log-entry.is-derail { opacity: 0.7; border-left-style: dashed; }
+
+  .entry-actions {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .misaddress-notice { margin: 8px 0; padding: 10px 12px; border-radius: 10px; background: var(--danger-bg); color: var(--danger); font-size: 0.82rem; line-height: 1.6; }
+  .misaddress-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .exchange-warning { margin: 8px 0; padding: 8px 12px; border-radius: 10px; background: var(--c-perplexity-bg); color: var(--c-perplexity); font-size: 0.8rem; line-height: 1.6; }
+  .tag-editor { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--ink-muted); }
+  .archive-genre-row { margin: 10px 0 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--ink-muted); }
+
+  .mod-cards, .reaction-row, .intrude-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin: 4px 0 8px;
+  }
+
+  .tag-chip.active {
+    background: var(--ink);
+    color: var(--surface);
+    border-color: var(--ink);
+  }
+
+  .relation-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  .relation-table th, .relation-table td {
+    border-bottom: 1px solid var(--border);
+    padding: 6px 8px;
+    text-align: left;
+  }
+  .relation-table th { color: var(--ink-muted); font-weight: 500; white-space: nowrap; }
+
+  /* 相性パネル：タブ・時系列・ジャンル */
+  .relation-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .rel-tab.active { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  .genre-select { display: flex; flex-wrap: wrap; gap: 6px; }
+  .genre-chip {
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 5px 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    user-select: none;
+    background: var(--surface-2);
+    color: var(--ink-muted);
+    font-family: inherit;
+  }
+  .genre-chip.active { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  .trend-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.75rem; color: var(--ink-muted); margin-bottom: 8px; }
+  .legend-item { display: inline-flex; align-items: center; gap: 4px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .trend-pair { padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .trend-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 2px 12px; margin-bottom: 6px; }
+  .trend-name { font-size: 0.88rem; }
+  .trend-note { font-size: 0.75rem; color: var(--ink-muted); }
+  .trend-scroll { overflow-x: auto; padding-bottom: 4px; }
+  .trend-bars { display: flex; gap: 5px; align-items: flex-end; min-width: max-content; }
+  .trend-bar {
+    flex: none;
+    width: 20px;
+    height: 44px;
+    padding: 0;
+    display: flex;
+    flex-direction: column-reverse;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface-2);
+    cursor: pointer;
+  }
+  .trend-bar.selected { outline: 2px solid var(--ink); outline-offset: 1px; }
+  .trend-seg { display: block; width: 100%; flex: none; }
+  .seg-agree { background: var(--c-chatgpt); }
+  .seg-expand { background: var(--c-gemini); }
+  .seg-oppose { background: var(--danger); }
+  .seg-derail { background: var(--c-perplexity); }
+  .seg-ignore { background: var(--ink-muted); }
+  .trend-detail { font-size: 0.8rem; color: var(--ink-muted); margin-top: 6px; line-height: 1.6; }
+  .trend-foot, .relation-hint { font-size: 0.75rem; color: var(--ink-muted); margin: 10px 0 0; line-height: 1.6; }
+  .genre-block { margin-bottom: 14px; }
+  .genre-block-head { font-size: 0.88rem; margin: 8px 0 4px; display: flex; justify-content: space-between; align-items: baseline; }
+  .genre-block-head span { font-size: 0.75rem; color: var(--ink-muted); }
+
+  /* 相性パネル：噛み合いパターン */
+  .pattern-card { padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .pattern-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px 10px; margin-bottom: 8px; }
+  .pattern-badge {
+    font-size: 0.78rem;
+    border-radius: 100px;
+    padding: 2px 11px;
+    white-space: nowrap;
+    background: var(--surface-2);
+    color: var(--ink-muted);
+    border: 1px solid var(--border);
+  }
+  .pattern-badge.tone-agree { background: var(--c-chatgpt-bg); color: var(--c-chatgpt); border-color: transparent; }
+  .pattern-badge.tone-expand { background: var(--c-gemini-bg); color: var(--c-gemini); border-color: transparent; }
+  .pattern-badge.tone-oppose { background: var(--danger-bg); color: var(--danger); border-color: transparent; }
+  .pattern-badge.tone-derail { background: var(--c-perplexity-bg); color: var(--c-perplexity); border-color: transparent; }
+  .ratio-bar {
+    display: flex;
+    height: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+  }
+  .ratio-seg { display: block; height: 100%; flex: none; }
+  .pattern-desc { font-size: 0.8rem; color: var(--ink-muted); line-height: 1.6; margin: 6px 0 0; }
+
+  /* AI自己判定 */
+  .tag-badge.self-badge.mismatch { color: var(--danger); background: var(--danger-bg); }
+  .self-matrix th, .self-matrix td { text-align: center; }
+  .self-matrix td.diag { background: var(--c-chatgpt-bg); color: var(--c-chatgpt); font-weight: 500; }
+  .self-matrix td.zero { opacity: 0.45; }
+  .mismatch-item { border-bottom: 1px solid var(--border); padding: 8px 0; font-size: 0.85rem; }
+  .mismatch-item summary { cursor: pointer; line-height: 1.6; }
+  .mismatch-body { margin-top: 6px; font-size: 0.8rem; line-height: 1.7; white-space: pre-wrap; color: var(--ink-muted); }
+  .mismatch-meta { margin-bottom: 4px; }
+  .genre-summary { font-size: 0.85rem; line-height: 1.7; margin: 0 0 12px; padding: 10px 12px; background: var(--surface-2); border-radius: 10px; }
+
+  .archive-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .archive-head .buttons {
+    display: flex;
+    gap: 8px;
+  }
+
+  .archive-empty {
+    color: var(--ink-muted);
+    font-size: 0.88rem;
+  }
+
+  .archive-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .archive-item {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: var(--surface-2);
+  }
+
+  .archive-item-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 2px 10px;
+    cursor: pointer;
+  }
+
+  .archive-item-topic {
+    flex: 1 1 10em;
+    min-width: 0;
+    font-family: 'Shippori Mincho', serif;
+    font-size: 0.95rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .archive-item-sub {
+    font-size: 0.76rem;
+    color: var(--ink-muted);
+    white-space: nowrap;
+  }
+
+  .archive-item-log {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  .archive-item-log .text {
+    white-space: pre-wrap;
+    font-size: 0.88rem;
+  }
+
+  .member-select {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .member-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 5px 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    user-select: none;
+    background: var(--surface-2);
+    color: var(--ink-muted);
+  }
+
+  .member-chip input {
+    accent-color: var(--ink);
+  }
+
+  .member-chip.checked.chatgpt { color: var(--c-chatgpt); background: var(--c-chatgpt-bg); border-color: transparent; }
+  .member-chip.checked.claude { color: var(--c-claude); background: var(--c-claude-bg); border-color: transparent; }
+  .member-chip.checked.gemini { color: var(--c-gemini); background: var(--c-gemini-bg); border-color: transparent; }
+  .member-chip.checked.perplexity { color: var(--c-perplexity); background: var(--c-perplexity-bg); border-color: transparent; }
+
+  .primary-btn {
+    background: var(--ink);
+    color: var(--surface);
+    border: none;
+    border-radius: 100px;
+    padding: 9px 20px;
+    font-size: 0.92rem;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 500;
+  }
+  .primary-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .primary-btn:not(:disabled):hover { opacity: 0.85; }
+
+  .actions-bar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  /* ログ */
+  .log-area {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .log-load-more {
+    text-align: center;
+    padding: 4px 0 6px;
+  }
+
+  .empty-state {
+    text-align: center;
+    color: var(--ink-muted);
+    font-size: 0.9rem;
+    padding: 30px 10px;
+  }
+
+  .log-entry {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left-width: 4px;
+    border-radius: 10px;
+    padding: 16px 16px;
+  }
+  .log-entry.chatgpt { border-left-color: var(--c-chatgpt); }
+  .log-entry.claude { border-left-color: var(--c-claude); }
+  .log-entry.gemini { border-left-color: var(--c-gemini); }
+  .log-entry.perplexity { border-left-color: var(--c-perplexity); }
+  .log-entry.moderator {
+    border-left-color: var(--border);
+    border-left-style: dashed;
+    background: var(--surface-2);
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .log-entry.moderator .text {
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+  }
+
+  .log-entry .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    margin-bottom: 8px;
+    font-size: 0.8rem;
+  }
+  .log-entry .meta .speaker-tag { white-space: nowrap; }
+
+  .speaker-tag {
+    font-weight: 700;
+    padding: 3px 11px;
+    border-radius: 100px;
+    font-size: 0.82rem;
+  }
+  .speaker-tag.chatgpt { color: var(--c-chatgpt); background: var(--c-chatgpt-bg); }
+  .speaker-tag.claude { color: var(--c-claude); background: var(--c-claude-bg); }
+  .speaker-tag.gemini { color: var(--c-gemini); background: var(--c-gemini-bg); }
+  .speaker-tag.perplexity { color: var(--c-perplexity); background: var(--c-perplexity-bg); }
+  .speaker-tag.moderator { color: var(--ink-muted); background: var(--surface); font-style: italic; }
+
+  .log-entry .time,
+  .log-entry .turn-no {
+    color: var(--ink-muted);
+    font-weight: 500;
+  }
+
+  .log-entry .text {
+    white-space: pre-wrap;
+    font-size: 0.97rem;
+  }
+
+  /* 発言パネル(下部固定) */
+  .turn-panel {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+    max-height: min(78vh, 640px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    z-index: 25;
+    box-shadow: 0 -6px 16px -10px rgba(0, 0, 0, 0.35);
+  }
+
+  .turn-panel-inner {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .turn-topic {
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .speaker-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .speaker-badge.chatgpt { background: var(--c-chatgpt-bg); color: var(--c-chatgpt); }
+  .speaker-badge.claude { background: var(--c-claude-bg); color: var(--c-claude); }
+  .speaker-badge.gemini { background: var(--c-gemini-bg); color: var(--c-gemini); }
+  .speaker-badge.perplexity { background: var(--c-perplexity-bg); color: var(--c-perplexity); }
+
+  .turn-panel textarea {
+    width: 100%;
+    min-height: 76px;
+    max-height: 200px;
+    resize: vertical;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--ink);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-family: inherit;
+    font-size: 0.93rem;
+  }
+
+  .aside-textarea {
+    min-height: 44px !important;
+    margin-top: 8px;
+    font-size: 0.85rem !important;
+    border-style: dashed !important;
+  }
+
+  .turn-panel .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .hint {
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+  }
+
+  .preview-box {
+    margin-top: 12px;
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: var(--surface-2);
+  }
+
+  .preview-box .label {
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .preview-box textarea {
+    width: 100%;
+    min-height: 100px;
+    max-height: 220px;
+    border: none;
+    background: transparent;
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 0.85rem;
+    resize: vertical;
+    padding: 0;
+  }
+
+  .small-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--ink);
+    border-radius: 100px;
+    padding: 3px 10px;
+    font-size: 0.76rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .small-btn:hover { border-color: var(--ink); }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 190px;
+    transform: translateX(-50%) translateY(10px);
+    background: var(--ink);
+    color: var(--surface);
+    padding: 8px 18px;
+    border-radius: 100px;
+    font-size: 0.85rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 50;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  @media (max-width: 480px) {
+    .app-header h1 { font-size: 1.4rem; }
+  }
+
+  .back-to-top {
+    position: fixed;
+    right: 16px;
+    bottom: 190px;
+    z-index: 30;
+    background: var(--ink);
+    color: var(--surface);
+    border: none;
+    border-radius: 100px;
+    padding: 8px 14px;
+    font-size: 0.78rem;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  }
+  .back-to-top:hover { opacity: 0.9; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="sticky-top" id="stickyTop">
+    <header class="app-header">
+      <div>
+        <h1>AI井戸端会議</h1>
+        <p class="tagline">ChatGPT・Claude・Gemini・Perplexityのあいだをコピペでつなぐ、人間が議長の会議</p>
+      </div>
+      <div class="header-meta">
+        <span class="turn-badge" id="turnBadge">ターン 0</span>
+        <button class="ghost-btn" id="archiveToggleBtn">過去ログ</button>
+        <button class="ghost-btn" id="relationToggleBtn">相性</button>
+        <button class="ghost-btn" id="resetBtn">リセット</button>
+      </div>
+    </header>
+
+    <section class="topic-bar" id="topicBar"></section>
+
+    <section class="topic-bar" id="archivePanel" style="display:none;"></section>
+    <section class="topic-bar" id="relationPanel" style="display:none;"></section>
+    <input type="file" id="archiveFileInput" accept="application/json,.json" style="display:none;">
+
+    <div class="actions-bar" id="actionsBar" style="display:none;"></div>
+  </div>
+
+  <div id="utilityPreviewContainer" style="display:none;"></div>
+
+  <main class="log-area" id="logArea"></main>
+</div>
+
+<button class="back-to-top" id="backToTop" style="display:none;" aria-label="上に戻る">▲ 議題</button>
+
+<section class="turn-panel" id="turnPanel" style="display:none;">
+  <div class="turn-panel-inner" id="turnPanelInner"></div>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  var STORAGE_KEY = 'aiIdobataState_v1';
+  var ARCHIVE_STORAGE_KEY = 'aiIdobataArchive_v1';
+  var ALL_MEMBERS = ['ChatGPT', 'Claude', 'Gemini', 'Perplexity'];
+  var DEFAULT_ORDER = ['ChatGPT', 'Claude', 'Gemini'];
+  var CLASS = { 'ChatGPT': 'chatgpt', 'Claude': 'claude', 'Gemini': 'gemini', 'Perplexity': 'perplexity' };
+  var ICON = { 'ChatGPT': '●', 'Claude': '◆', 'Gemini': '▲', 'Perplexity': '■' };
+  var LOG_PAGE_SIZE = 6;
+  var logExpanded = false;
+
+  var state = loadState() || {
+    topic: '',
+    started: false,
+    turnIndex: 0,
+    turnCount: 0,
+    log: [],
+    lastGenerated: '',
+    lastGeneratedFor: '',
+    order: DEFAULT_ORDER.slice(),
+    meetingId: '',
+    startedAt: null,
+    pendingIntrude: null,
+    genre: '',
+    selfJudge: true,
+    guide: true
+  };
+  if (!state.order || !state.order.length) {
+    state.order = DEFAULT_ORDER.slice();
+  }
+  if (state.pendingIntrude === undefined) state.pendingIntrude = null;
+  if (typeof state.genre !== 'string') state.genre = '';
+  // 旧バージョンで始めた会議は、依頼文に自己判定の指示が入っていないので OFF のままにする
+  if (typeof state.selfJudge !== 'boolean') state.selfJudge = !state.started;
+  if (typeof state.guide !== 'boolean') state.guide = true;
+  if (state.started && !state.meetingId) {
+    // 旧バージョンのstateを読み込んだ場合の救済
+    state.meetingId = 'm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+    state.startedAt = state.startedAt || Date.now();
+  }
+
+  var archiveStore = loadArchiveStore();
+  var archivePanelOpen = false;
+  var archiveExpandedId = null;
+
+  var hideDerail = false;
+  var pendingReaction = null;
+  var intrudePickerOpen = false;
+  var relationPanelOpen = false;
+  var relationTab = 'table';
+  var trendSelected = null;
+  var genrePickerOpen = false;
+  var editingTagId = null;
+  var misaddressNotice = null;
+  var misaddressOverride = false;
+  var selfConfFilter = '';
+
+  var MOD_CARDS = [
+    { label: '話題転換', text: 'そろそろ話題を変えて、別の角度から議論してみてください。' },
+    { label: '反論希望', text: '今の発言に対して、あえて反対の立場から反論してみてください。' },
+    { label: 'まとめ希望', text: 'ここまでの議論を一度簡単に整理してから続けてください。' },
+    { label: '深掘り希望', text: '今の話、もう少し具体的に踏み込んで聞かせてください。' }
+  ];
+
+  var REACTION_TYPES = [
+    { key: 'agree', label: '同意' },
+    { key: 'oppose', label: '反論' },
+    { key: 'expand', label: '展開' },
+    { key: 'derail', label: '脱線' },
+    { key: 'ignore', label: '無視' }
+  ];
+  var REACTION_LABEL = {};
+  REACTION_TYPES.forEach(function (r) { REACTION_LABEL[r.key] = r.label; });
+
+  var GENRES = [
+    { key: 'tech', label: '技術' },
+    { key: 'chat', label: '雑談' },
+    { key: 'create', label: '創作' },
+    { key: 'think', label: '思想・哲学' },
+    { key: 'work', label: '相談・実務' }
+  ];
+  var PATTERN_MIN = 3;
+  var PATTERNS = {
+    pending: { label: '見極め中', tone: 'none', desc: '' },
+    kyoso: { label: '共創型', tone: 'agree', desc: '同意と展開が半々くらいで、相手の発言に乗って話を膨らませていく組み合わせですの。' },
+    sesshu: { label: '切磋琢磨型', tone: 'expand', desc: '反論を挟みながらも話を先へ進める、ぶつかりつつ深まっていく組み合わせですの。' },
+    agree: { label: '賛同型', tone: 'agree', desc: 'ほとんど同意で返す、穏やかに噛み合う組み合わせですの。' },
+    oppose: { label: '対立型', tone: 'oppose', desc: '反論で返すことが多い、意見がぶつかりやすい組み合わせですの。' },
+    expand: { label: '深掘り型', tone: 'expand', desc: '相手の発言を受けて、話を広げたり掘り下げたりすることが多い組み合わせですの。' },
+    derail: { label: '脱線型', tone: 'derail', desc: '話が横道にそれやすい組み合わせですの。' },
+    ignore: { label: 'すれ違い型', tone: 'none', desc: '相手の発言を拾わずに進めがちな組み合わせですの。' },
+    mixed: { label: 'まちまち型', tone: 'none', desc: 'はっきりした傾向はまだ出ておらず、場面ごとに反応が変わる組み合わせですの。' }
+  };
+  var GENRE_LABEL = { '': '未分類' };
+  GENRES.forEach(function (g) { GENRE_LABEL[g.key] = g.label; });
+
+  var utilityPreview = null;
+  var downloadsApi = null;
+  (function initCapabilities() {
+    try {
+      window.claude.use('downloads').then(function (api) {
+        downloadsApi = api;
+      });
+    } catch (e) {
+      downloadsApi = null;
+    }
+  })();
+
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      showToast('保存に失敗しましたわ');
+    }
+    if (state.started && state.log.length > 0) {
+      mergeMeetingIntoArchive(buildCurrentMeetingRecord());
+      saveArchiveStore();
+    }
+  }
+
+  function loadArchiveStore() {
+    try {
+      var raw = localStorage.getItem(ARCHIVE_STORAGE_KEY);
+      if (!raw) return { archive: [], relationships: {}, branches: {} };
+      var parsed = JSON.parse(raw);
+      return {
+        archive: parsed.archive || [],
+        relationships: parsed.relationships || {},
+        branches: parsed.branches || {}
+      };
+    } catch (e) {
+      return { archive: [], relationships: {}, branches: {} };
+    }
+  }
+
+  function saveArchiveStore() {
+    try {
+      localStorage.setItem(ARCHIVE_STORAGE_KEY, JSON.stringify(archiveStore));
+    } catch (e) {
+      // ローカルの保存に失敗してもファイル書き出しはできるので、ここでは静かに諦める
+    }
+  }
+
+  function slugify(topic) {
+    return (topic || '').trim().slice(0, 20)
+      .replace(/[\\/:*?"<>|\n\r\t]/g, '')
+      .replace(/\s+/g, '-');
+  }
+
+  function buildArchiveFilename(topic) {
+    var d = new Date();
+    function pad(n) { return String(n).padStart(2, '0'); }
+    var stamp = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) +
+      '_' + pad(d.getHours()) + pad(d.getMinutes());
+    var slug = slugify(topic);
+    return 'idobata-kaigi_' + stamp + (slug ? '_' + slug : '') + '.json';
+  }
+
+  function buildCurrentMeetingRecord() {
+    return {
+      id: state.meetingId,
+      topic: state.topic,
+      order: state.order.slice(),
+      genre: state.genre || '',
+      log: state.log,
+      turnCount: state.turnCount,
+      startedAt: state.startedAt,
+      updatedAt: Date.now()
+    };
+  }
+
+  function mergeMeetingIntoArchive(record) {
+    if (!record || !record.id) return;
+    var idx = -1;
+    for (var i = 0; i < archiveStore.archive.length; i++) {
+      if (archiveStore.archive[i].id === record.id) { idx = i; break; }
+    }
+    if (idx === -1) {
+      archiveStore.archive.push(record);
+    } else if ((archiveStore.archive[idx].updatedAt || 0) <= record.updatedAt) {
+      archiveStore.archive[idx] = record;
+    }
+  }
+
+  function mergeLoadedArchive(loaded) {
+    var incoming = (loaded && loaded.archive) || [];
+    incoming.forEach(function (rec) {
+      mergeMeetingIntoArchive(rec);
+    });
+    archiveStore.archive.sort(function (a, b) {
+      return (b.updatedAt || 0) - (a.updatedAt || 0);
+    });
+  }
+
+  function buildArchiveJson() {
+    if (state.started && state.log.length > 0) {
+      mergeMeetingIntoArchive(buildCurrentMeetingRecord());
+    }
+    archiveStore.archive.sort(function (a, b) {
+      return (b.updatedAt || 0) - (a.updatedAt || 0);
+    });
+    saveArchiveStore();
+    var messageCount = archiveStore.archive.reduce(function (sum, m) {
+      return sum + (m.log ? m.log.length : 0);
+    }, 0);
+    return {
+      schemaVersion: 1,
+      meta: {
+        savedAt: new Date().toISOString(),
+        topic: state.topic,
+        participants: state.order,
+        meetingCount: archiveStore.archive.length,
+        messageCount: messageCount
+      },
+      archive: archiveStore.archive,
+      relationships: archiveStore.relationships,
+      branches: archiveStore.branches
+    };
+  }
+
+  function downloadBlob(filename, text, mime) {
+    try {
+      var blob = new Blob([text], { type: mime || 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      showToast('保存しましたわ');
+    } catch (e) {
+      showToast('保存に失敗しましたわ');
+    }
+  }
+
+  function onSaveArchive() {
+    var payload = buildArchiveJson();
+    var text = JSON.stringify(payload, null, 2);
+    var filename = buildArchiveFilename(state.topic);
+    if (downloadsApi) {
+      downloadsApi.save({ filename: filename, data: text }).then(function () {
+        showToast('保存しましたわ');
+      }).catch(function (err) {
+        if (err && err.code === 'declined') return;
+        downloadBlob(filename, text, 'application/json');
+      });
+    } else {
+      downloadBlob(filename, text, 'application/json');
+    }
+    renderArchivePanel();
+  }
+
+  function onLoadArchiveClick() {
+    var input = document.getElementById('archiveFileInput');
+    if (input) input.click();
+  }
+
+  function onArchiveFileSelected(e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var loaded = JSON.parse(reader.result);
+        mergeLoadedArchive(loaded);
+        saveArchiveStore();
+        archivePanelOpen = true;
+        renderArchivePanel();
+        showToast('読み込みましたわ（' + archiveStore.archive.length + '件）');
+      } catch (err) {
+        showToast('読み込みに失敗しましたわ。JSONファイルを選んでくださいまし');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }
+
+  function showToast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._timer);
+    showToast._timer = setTimeout(function () {
+      t.classList.remove('show');
+    }, 1800);
+  }
+
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+  function copyToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(function () {
+        showToast('コピーしましたわ');
+      }).catch(function () {
+        fallbackCopy(text);
+        showToast('コピーしましたわ');
+      });
+    } else {
+      fallbackCopy(text);
+      showToast('コピーしましたわ');
+    }
+  }
+
+  function nextAfter(name) {
+    var i = state.order.indexOf(name);
+    if (i === -1 || !state.order.length) return '';
+    return state.order[(i + 1) % state.order.length];
+  }
+
+  // 依頼文の冒頭に置く宛先確認。別のAIに貼り間違えたときに、その場で気づけるようにする
+  function addresseeCheck(addressee) {
+    if (!state.guide || !addressee) return '';
+    return '【宛先の確認】この文章は' + addressee + '宛に用意したものです。もしあなたが' + addressee +
+      '本人ではなく、別のAIに貼り間違えたのであれば、返答の冒頭で「' + addressee +
+      '宛の文章だったようですが…」と一言指摘し、このまま答えてよいかを確認して、そこで止まってください。' +
+      addressee + '本人であれば、この段落には触れず、通常どおり答えてください。\n\n';
+  }
+
+  // 直前の発言より前の流れを、発言者名つきで短く添える(各発言は冒頭のみ・最大3件)
+  function recentFlowBlock(upToEntry) {
+    var spoken = state.log.filter(function (e) { return !e.mod; });
+    var idx = spoken.length - 1;
+    if (upToEntry) {
+      idx = spoken.indexOf(upToEntry);
+      if (idx === -1) idx = spoken.length - 1;
+    }
+    var prior = spoken.slice(Math.max(0, idx - 3), idx);
+    if (!prior.length) return '';
+    return 'ここまでの流れ(古い順・各発言は冒頭のみ):\n' + prior.map(function (e) {
+      var t = String(e.text || '').replace(/\s+/g, ' ').trim();
+      if (t.length > 140) t = t.slice(0, 140) + '…';
+      return '・' + e.speaker + (e.intrude ? '(乱入)' : '') + ':' + t;
+    }).join('\n') + '\n\n';
+  }
+
+  function buildPromptBase(topic, prevSpeaker, prevText, asideText, addressee) {
+    var participants = state.guide
+      ? ('参加者は' + state.order.join('、') + 'です。発言は順番に回り、あなたの次は' + nextAfter(addressee) + 'です。\n\n')
+      : '';
+    if (!prevSpeaker) {
+      return 'あなたはAI井戸端会議の参加者です。\n\n' +
+        addresseeCheck(addressee) +
+        '今回の議題:\n「' + topic + '」\n\n' +
+        participants +
+        'あなた自身の考えを自由に述べてください。\n\n' +
+        '単なる説明ではなく、あなた独自の視点や、踏み込んだ意見も歓迎します。';
+    }
+    var asidePart = '';
+    if (asideText) {
+      asidePart = '\nなお、議長(この会議を進行している人間)から次のようなひとことがありました。\n\n' +
+        '「' + asideText + '」\n\n' +
+        '軽い相槌や合いの手なので、深く触れる必要はありませんが、頭には置いておいてください。\n';
+    }
+    var guideTail = state.guide
+      ? '\n\n発言は、特定の一人への質問や呼びかけで終わらせないでください。' +
+        '相手の主張に疑問がある場合も、質問の形ではなく、あなたの見解として述べてください。' +
+        'どうしても尋ねたいことがある場合は、議長が相手に回しますので、返事を待たずに発言を完結させてください。'
+      : '';
+    return 'あなたはAI井戸端会議の参加者です。\n\n' +
+      addresseeCheck(addressee) +
+      '今回の議題:\n「' + topic + '」\n\n' +
+      participants +
+      (state.guide ? recentFlowBlock(null) : '') +
+      '以下は' + prevSpeaker + 'の発言です。\n\n' +
+      '――――――――\n' + prevText + '\n――――――――\n' +
+      asidePart + '\n' +
+      (state.guide
+        ? 'この発言を参考にしつつ、前の発言者と1対1で会話するのではなく、参加者全員で一つの議題を検討していることを意識して、議題そのものに対するあなた自身の考えを述べてください。'
+        : 'この発言を踏まえて、あなた自身の考えを述べてください。') + '\n\n' +
+      '単なる要約ではなく、新しい観点や反論も歓迎します。' + guideTail;
+  }
+
+  function genId(prefix) {
+    return (prefix || 'e') + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+  }
+
+  // 直近の発言が、同じ二人の交互のやりとりになっている長さを数える(ひとことは除く・乱入は含む)
+  var EXCHANGE_WARN_MIN = 4;
+
+  function exchangeStreak() {
+    var spoken = state.log.filter(function (e) { return !e.mod; });
+    var n = spoken.length;
+    if (n < 2) return null;
+    var a = spoken[n - 1].speaker;
+    var b = spoken[n - 2].speaker;
+    if (a === b) return null;
+    var len = 2;
+    for (var i = n - 3; i >= 0; i--) {
+      var expected = ((n - 1 - i) % 2 === 0) ? a : b;
+      if (spoken[i].speaker !== expected) break;
+      len += 1;
+    }
+    return { older: b, newer: a, len: len };
+  }
+
+  // 人間に知らせるだけ。自動では何も変えない。参加者が2人の会議では交互が普通なので出さない
+  function exchangeWarningHtml() {
+    if (state.order.length < 3) return '';
+    var streak = exchangeStreak();
+    if (!streak || streak.len < EXCHANGE_WARN_MIN) return '';
+    var cur = currentSpeaker();
+    var tail = (cur && cur !== streak.older && cur !== streak.newer)
+      ? '順番どおりなら次は' + cur + 'です。'
+      : 'ほかの参加者にも話を振りたいところですの。';
+    return '<div class="exchange-warning">' + escapeHtml(streak.older) + 'と' + escapeHtml(streak.newer) +
+      'の二人だけのやりとりが、' + streak.len + '発言続いていますの。' + escapeHtml(tail) + '</div>';
+  }
+
+  // ひとことを除いた直近の発言(乱入も含む)
+  function lastSpokenEntry() {
+    for (var i = state.log.length - 1; i >= 0; i--) {
+      if (!state.log[i].mod) return state.log[i];
+    }
+    return null;
+  }
+
+  function lastRealEntry() {
+    for (var i = state.log.length - 1; i >= 0; i--) {
+      if (!state.log[i].mod && !state.log[i].intrude) return state.log[i];
+    }
+    return null;
+  }
+
+  function buildIntrudePromptBase(topic, lastEntry, intruder) {
+    var contextPart = lastEntry ?
+      ('直前の発言は' + lastEntry.speaker + 'によるものです。\n\n――――――――\n' + lastEntry.text + '\n――――――――\n\n') :
+      '';
+    var participants = state.guide
+      ? ('参加者は' + state.order.join('、') + 'です。今回は順番を離れての乱入で、あなたの発言のあとは、順番どおり' +
+         currentSpeaker() + 'の発言に戻ります。\n\n')
+      : '';
+    var guideTail = state.guide
+      ? '\n\nこの乱入は一度きりです。あなたの発言のあと、議長は順番どおり次の参加者へ進めますので、相手の返事を待たず、発言を完結させてください。'
+      : '';
+    return 'あなたはAI井戸端会議の参加者です。\n\n' +
+      addresseeCheck(intruder) +
+      '今回の議題:\n「' + topic + '」\n\n' +
+      participants +
+      (state.guide ? recentFlowBlock(lastEntry) : '') +
+      contextPart +
+      'ここで議長があなた(' + intruder + ')を指名し、順番を無視して今の流れに割って入ってもらうことになりました。\n\n' +
+      '鋭い指摘、話の腰を折るような疑問、まったく別の角度からの一言、どれも歓迎します。自由に発言してください。' + guideTail;
+  }
+
+  function selfJudgeNote() {
+    return '\n\n最後に、あなたの発言が直前の発言に対してどんな関わり方だったかを、返答の一番最後の行に次の形式で1行だけ書き添えてください。\n' +
+      '【自己判定:○○ / 確度:△】\n' +
+      '○○には「同意」「反論」「展開」「脱線」「無視」のいずれか最も近いもの1つを、△には「高」「中」「低」のいずれかを入れてください。\n' +
+      '同意は賛成して支持すること、反論は異を唱えること、展開は話を広げたり深めたりすること、脱線は本筋から離れること、無視は触れずに進めることを指します。書いた後に見直しての自己評価で構いません。';
+  }
+
+  // 直前の発言がある依頼文にだけ、自己判定のお願いを足す(最初の発言には反応先がないので付けない)
+  function buildPrompt(topic, prevSpeaker, prevText, asideText, addressee) {
+    var base = buildPromptBase(topic, prevSpeaker, prevText, asideText, addressee);
+    return (state.selfJudge && prevSpeaker) ? base + selfJudgeNote() : base;
+  }
+
+  function buildIntrudePrompt(topic, lastEntry, intruder) {
+    var base = buildIntrudePromptBase(topic, lastEntry, intruder);
+    return (state.selfJudge && lastEntry) ? base + selfJudgeNote() : base;
+  }
+
+  // 貼り付けられた返答から【自己判定:...】の行を読み取り、本文からは取り除く
+  var SELF_JUDGE_RE = /[【\[［]\s*自己判定\s*[:：]([^】\]］\n]*)[】\]］]/g;
+
+  function extractSelfJudgment(raw) {
+    var re = new RegExp(SELF_JUDGE_RE.source, 'g');
+    var hit = null;
+    var m;
+    while ((m = re.exec(raw)) !== null) {
+      var inner = m[1];
+      var bestKey = null;
+      var bestIdx = -1;
+      REACTION_TYPES.forEach(function (r) {
+        var idx = inner.indexOf(r.label);
+        if (idx !== -1 && (bestIdx === -1 || idx < bestIdx)) { bestIdx = idx; bestKey = r.key; }
+      });
+      if (!bestKey) continue;
+      var confM = inner.match(/確度\s*[:：]?\s*([高中低])/);
+      hit = { start: m.index, end: m.index + m[0].length, key: bestKey, conf: confM ? confM[1] : '' };
+    }
+    if (!hit) return { text: raw, judge: null };
+    var body = raw.slice(0, hit.start) + raw.slice(hit.end);
+    var lines = body.split('\n');
+    while (lines.length && /^[\s*_`>~\-]*$/.test(lines[lines.length - 1])) lines.pop();
+    return { text: lines.join('\n').trim(), judge: { key: hit.key, conf: hit.conf } };
+  }
+
+  function fmtTime(ts) {
+    var d = new Date(ts);
+    var h = String(d.getHours()).padStart(2, '0');
+    var m = String(d.getMinutes()).padStart(2, '0');
+    return h + ':' + m;
+  }
+
+  function currentSpeaker() {
+    return state.order[state.turnIndex];
+  }
+
+  function render() {
+    renderTopicBar();
+    renderArchivePanel();
+    renderRelationPanel();
+    renderActionsBar();
+    renderUtilityPreview();
+    renderLog();
+    renderTurnPanel();
+    document.getElementById('turnBadge').textContent = 'ターン ' + state.turnCount;
+  }
+
+  function renderActionsBar() {
+    var el = document.getElementById('actionsBar');
+    if (state.log.length === 0) {
+      el.style.display = 'none';
+      el.innerHTML = '';
+      return;
+    }
+    el.style.display = 'flex';
+    el.innerHTML =
+      '<button class="ghost-btn" id="summaryBtn">まとめを依頼する文章を作る</button>' +
+      '<button class="ghost-btn" id="exportBtn">NotebookLM用に書き出す</button>' +
+      '<button class="ghost-btn" id="saveArchiveBtn">会議データを保存(JSON)</button>';
+    document.getElementById('summaryBtn').addEventListener('click', onSummary);
+    document.getElementById('exportBtn').addEventListener('click', onExport);
+    document.getElementById('saveArchiveBtn').addEventListener('click', onSaveArchive);
+  }
+
+  function fmtDate(ts) {
+    if (!ts) return '';
+    var d = new Date(ts);
+    function pad(n) { return String(n).padStart(2, '0'); }
+    return d.getFullYear() + '/' + pad(d.getMonth() + 1) + '/' + pad(d.getDate()) +
+      ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function renderArchivePanel() {
+    var el = document.getElementById('archivePanel');
+    if (!archivePanelOpen) {
+      el.style.display = 'none';
+      el.innerHTML = '';
+      return;
+    }
+    el.style.display = 'block';
+
+    var list = archiveStore.archive.slice().sort(function (a, b) {
+      return (b.updatedAt || 0) - (a.updatedAt || 0);
+    });
+
+    var listHtml = '';
+    if (list.length === 0) {
+      listHtml = '<p class="archive-empty">まだ保存された会議はありませんの。JSONファイルを読み込むか、会議を進めて保存してくださいまし。</p>';
+    } else {
+      listHtml = '<div class="archive-list">' + list.map(function (m) {
+        var isOpen = archiveExpandedId === m.id;
+        var genreRow = '';
+        if (isOpen) {
+          genreRow = '<div class="archive-genre-row"><span>ジャンル:</span>' + GENRES.map(function (g) {
+            return '<button type="button" class="genre-chip archive-genre-chip' + (genreKeyOf(m) === g.key ? ' active' : '') +
+              '" data-mid="' + m.id + '" data-genre="' + g.key + '">' + g.label + '</button>';
+          }).join('') + '</div>';
+        }
+        var logHtml = '';
+        if (isOpen) {
+          logHtml = '<div class="archive-item-log">' + (m.log || []).map(function (e) {
+            var cls = e.mod ? 'moderator' : (CLASS[e.speaker] || '');
+            var icon = e.mod ? '…' : (ICON[e.speaker] || '');
+            var badges = '';
+            if (e.intrude) badges += '<span class="tag-badge intrude-badge">乱入</span>';
+            if (e.derail) badges += '<span class="tag-badge derail-badge">脱線</span>';
+            return '<div class="log-entry ' + cls + (e.derail ? ' is-derail' : '') + '">' +
+              '<div class="meta"><span class="speaker-tag ' + cls + '">' + icon + ' ' + escapeHtml(e.speaker) + '</span>' + badges + '</div>' +
+              '<div class="text">' + escapeHtml(e.text) + '</div>' +
+              '</div>';
+          }).join('') + '</div>';
+        }
+        return '<div class="archive-item">' +
+          '<div class="archive-item-head" data-id="' + m.id + '">' +
+          '<span class="archive-item-topic">' + escapeHtml(m.topic || '(無題)') + '</span>' +
+          '<span class="archive-item-sub">' + fmtDate(m.updatedAt) + ' ・ ' + (m.log ? m.log.length : 0) + '件 ・ ' + escapeHtml(GENRE_LABEL[genreKeyOf(m)]) + '</span>' +
+          '</div>' + genreRow + logHtml + '</div>';
+      }).join('') + '</div>';
+    }
+
+    el.innerHTML =
+      '<div class="archive-head">' +
+      '<div class="label" style="margin:0;">過去の会議アーカイブ（' + list.length + '件）</div>' +
+      '<div class="buttons">' +
+      '<button class="ghost-btn" id="archiveLoadBtn">JSONを読み込む</button>' +
+      '<button class="ghost-btn" id="archiveSaveBtn">今の会議を保存</button>' +
+      '</div></div>' + listHtml;
+
+    document.getElementById('archiveLoadBtn').addEventListener('click', onLoadArchiveClick);
+    document.getElementById('archiveSaveBtn').addEventListener('click', onSaveArchive);
+    el.querySelectorAll('.archive-item-head').forEach(function (head) {
+      head.addEventListener('click', function () {
+        var id = head.getAttribute('data-id');
+        archiveExpandedId = (archiveExpandedId === id) ? null : id;
+        renderArchivePanel();
+      });
+    });
+    el.querySelectorAll('.archive-genre-chip').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        onSetArchiveGenre(btn.getAttribute('data-mid'), btn.getAttribute('data-genre'));
+      });
+    });
+  }
+
+  // 過去の会議にジャンルを後から付ける(同じチップをもう一度押すと未分類に戻す)。
+  // 並び順が動かないよう更新日時は触らない。進行中の会議なら、状態側も同じにして上書きを防ぐ
+  function onSetArchiveGenre(id, key) {
+    var m = archiveStore.archive.filter(function (x) { return x.id === id; })[0];
+    if (!m) return;
+    var next = (genreKeyOf(m) === key) ? '' : key;
+    m.genre = next;
+    if (state.started && id === state.meetingId) {
+      state.genre = next;
+      saveState();
+      renderTopicBar();
+    } else {
+      saveArchiveStore();
+    }
+    renderArchivePanel();
+  }
+
+  // 進行中の会議は保存のたびにアーカイブへも複製されるので、id で重複を除いて集める
+  function collectMeetings() {
+    var list = archiveStore.archive.filter(function (m) {
+      return !(state.started && m.id === state.meetingId);
+    });
+    if (state.started && state.log.length > 0) {
+      list.push(buildCurrentMeetingRecord());
+    }
+    list.sort(function (a, b) {
+      return (a.startedAt || a.updatedAt || 0) - (b.startedAt || b.updatedAt || 0);
+    });
+    return list;
+  }
+
+  function genreKeyOf(m) {
+    return (m && m.genre && GENRE_LABEL[m.genre]) ? m.genre : '';
+  }
+
+  // 「誰が(発言者)」が「誰に(直前の発言者)」どう反応したか
+  function tallyMeeting(m) {
+    var per = {};
+    (m.log || []).forEach(function (e) {
+      if (!e.reaction || !e.reactionTo || !e.speaker) return;
+      var key = e.speaker + '→' + e.reactionTo;
+      if (!per[key]) per[key] = { key: key, from: e.speaker, to: e.reactionTo, total: 0, counts: {} };
+      per[key].total += 1;
+      per[key].counts[e.reaction] = (per[key].counts[e.reaction] || 0) + 1;
+    });
+    return per;
+  }
+
+  function tallyPairs(meetings) {
+    var tally = {};
+    meetings.forEach(function (m) {
+      var per = tallyMeeting(m);
+      Object.keys(per).forEach(function (key) {
+        var p = per[key];
+        if (!tally[key]) tally[key] = { key: key, from: p.from, to: p.to, total: 0, counts: {} };
+        tally[key].total += p.total;
+        Object.keys(p.counts).forEach(function (k) {
+          tally[key].counts[k] = (tally[key].counts[k] || 0) + p.counts[k];
+        });
+      });
+    });
+    return Object.keys(tally).map(function (k) { return tally[k]; }).sort(function (a, b) {
+      return b.total - a.total;
+    });
+  }
+
+  function computeRelationships() {
+    return tallyPairs(collectMeetings());
+  }
+
+  function positiveRate(counts, total) {
+    if (!total) return 0;
+    return ((counts.agree || 0) + (counts.expand || 0)) / total;
+  }
+
+  function pct(rate) {
+    return Math.round(rate * 100);
+  }
+
+  function countsText(counts) {
+    return REACTION_TYPES.filter(function (r) { return counts[r.key]; }).map(function (r) {
+      return r.label + counts[r.key];
+    }).join('・');
+  }
+
+  function computeTimeline() {
+    var pairs = {};
+    collectMeetings().forEach(function (m) {
+      var per = tallyMeeting(m);
+      Object.keys(per).forEach(function (key) {
+        var p = per[key];
+        if (!pairs[key]) pairs[key] = { key: key, from: p.from, to: p.to, total: 0, points: [] };
+        pairs[key].total += p.total;
+        pairs[key].points.push({ meeting: m, counts: p.counts, total: p.total });
+      });
+    });
+    return Object.keys(pairs).map(function (k) { return pairs[k]; }).sort(function (a, b) {
+      return (b.points.length - a.points.length) || (b.total - a.total);
+    });
+  }
+
+  function trendText(pair) {
+    var pts = pair.points;
+    if (pts.length < 2) return '会議1回分だけですの';
+    var last = pts[pts.length - 1];
+    var prevPos = 0;
+    var prevTotal = 0;
+    pts.slice(0, -1).forEach(function (pt) {
+      prevPos += (pt.counts.agree || 0) + (pt.counts.expand || 0);
+      prevTotal += pt.total;
+    });
+    if (last.total < 2 || prevTotal < 2) return 'データが少なくて様子見ですの';
+    var diff = positiveRate(last.counts, last.total) - prevPos / prevTotal;
+    if (diff >= 0.15) return '最近は同意・展開が増えていますの';
+    if (diff <= -0.15) return '最近は同意・展開が減っていますの';
+    return '大きな変化はありませんの';
+  }
+
+  function pointDetailHtml(pt) {
+    var m = pt.meeting;
+    return '<div class="trend-detail">' +
+      escapeHtml(fmtDate(m.startedAt || m.updatedAt)) + ' / ' +
+      escapeHtml(GENRE_LABEL[genreKeyOf(m)]) + ' / ' +
+      escapeHtml((m.topic || '(議題なし)').slice(0, 30)) + '<br>' +
+      escapeHtml(countsText(pt.counts)) + '(同意・展開 ' + pct(positiveRate(pt.counts, pt.total)) + '%)' +
+      '</div>';
+  }
+
+  function emptyRelationHtml() {
+    return '<p class="archive-empty">まだ反応タグが記録されていませんの。発言時に「前の発言への反応」チップを選ぶと、ここに積み上がっていきますわ。</p>';
+  }
+
+  function buildTableHtml() {
+    var rows = computeRelationships();
+    if (rows.length === 0) return emptyRelationHtml();
+    return '<table class="relation-table"><thead><tr>' +
+      '<th>誰が</th><th>誰に</th><th>回数</th><th>内訳</th>' +
+      '</tr></thead><tbody>' +
+      rows.map(function (r) {
+        return '<tr><td>' + escapeHtml(r.from) + '</td><td>' + escapeHtml(r.to) + '</td>' +
+          '<td>' + r.total + '</td><td>' + escapeHtml(countsText(r.counts)) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+
+  function buildTrendHtml() {
+    var pairs = computeTimeline();
+    if (pairs.length === 0) return emptyRelationHtml();
+    var legend = '<div class="trend-legend">' + REACTION_TYPES.map(function (r) {
+      return '<span class="legend-item"><span class="legend-dot seg-' + r.key + '"></span>' + r.label + '</span>';
+    }).join('') + '</div>';
+    var body = pairs.map(function (p) {
+      var bars = p.points.map(function (pt, i) {
+        var segs = REACTION_TYPES.map(function (r) {
+          var c = pt.counts[r.key] || 0;
+          if (!c) return '';
+          return '<span class="trend-seg seg-' + r.key + '" style="height:' + (c / pt.total * 100) + '%"></span>';
+        }).join('');
+        var sel = trendSelected && trendSelected.key === p.key && trendSelected.i === i;
+        var m = pt.meeting;
+        return '<button type="button" class="trend-bar' + (sel ? ' selected' : '') + '" data-key="' +
+          escapeHtml(p.key) + '" data-i="' + i + '" aria-label="' +
+          escapeHtml(fmtDate(m.startedAt || m.updatedAt) + ' ' + countsText(pt.counts)) + '">' + segs + '</button>';
+      }).join('');
+      var detail = '';
+      if (trendSelected && trendSelected.key === p.key && p.points[trendSelected.i]) {
+        detail = pointDetailHtml(p.points[trendSelected.i]);
+      }
+      return '<div class="trend-pair"><div class="trend-head"><span class="trend-name">' +
+        escapeHtml(p.from) + ' → ' + escapeHtml(p.to) + '</span><span class="trend-note">会議' +
+        p.points.length + '回分・' + escapeHtml(trendText(p)) + '</span></div>' +
+        '<div class="trend-scroll"><div class="trend-bars">' + bars + '</div></div>' + detail + '</div>';
+    }).join('');
+    return legend + body +
+      '<p class="trend-foot">左が古い会議、右が新しい会議ですの。棒をタップすると、その会議の日付とお題が出ますわ。</p>';
+  }
+
+  function buildGenreHtml() {
+    var groups = {};
+    collectMeetings().forEach(function (m) {
+      var g = genreKeyOf(m);
+      if (!groups[g]) groups[g] = [];
+      groups[g].push(m);
+    });
+    var order = GENRES.map(function (g) { return g.key; }).concat(['']);
+    var byPair = {};
+    var blocks = [];
+    order.forEach(function (g) {
+      if (!groups[g]) return;
+      var rows = tallyPairs(groups[g]);
+      if (!rows.length) return;
+      rows.forEach(function (r) {
+        if (!byPair[r.key]) byPair[r.key] = [];
+        byPair[r.key].push({ genre: g, from: r.from, to: r.to, total: r.total, rate: positiveRate(r.counts, r.total) });
+      });
+      blocks.push(
+        '<div class="genre-block"><div class="genre-block-head">' + escapeHtml(GENRE_LABEL[g]) +
+        '<span>会議' + groups[g].length + '回</span></div>' +
+        '<table class="relation-table"><thead><tr><th>誰が</th><th>誰に</th><th>回数</th><th>同意・展開</th></tr></thead><tbody>' +
+        rows.map(function (r) {
+          return '<tr><td>' + escapeHtml(r.from) + '</td><td>' + escapeHtml(r.to) + '</td><td>' + r.total +
+            '</td><td>' + pct(positiveRate(r.counts, r.total)) + '%</td></tr>';
+        }).join('') + '</tbody></table></div>');
+    });
+    if (!blocks.length) return emptyRelationHtml();
+
+    var lines = [];
+    Object.keys(byPair).forEach(function (key) {
+      var q = byPair[key].filter(function (x) { return x.total >= 3; });
+      if (q.length < 2) return;
+      q.sort(function (a, b) { return b.rate - a.rate; });
+      var hi = q[0];
+      var lo = q[q.length - 1];
+      if (hi.rate - lo.rate < 0.2) return;
+      lines.push({
+        spread: hi.rate - lo.rate,
+        text: hi.from + ' → ' + hi.to + '：' + GENRE_LABEL[hi.genre] + 'では同意・展開が多く(' + pct(hi.rate) +
+          '%)、' + GENRE_LABEL[lo.genre] + 'では少なめ(' + pct(lo.rate) + '%)'
+      });
+    });
+    lines.sort(function (a, b) { return b.spread - a.spread; });
+    var summary = lines.length
+      ? '<p class="genre-summary">' + lines.slice(0, 5).map(function (l) { return escapeHtml(l.text); }).join('<br>') + '</p>'
+      : '<p class="relation-hint">お題を決めるときにジャンルを選んでおくと、ここで比べられますの。同じ組み合わせがふたつ以上のジャンルで3回以上たまると、違いが文章で出てきますわ。</p>';
+    return summary + blocks.join('');
+  }
+
+  // 反応の割合から型を決める。割合の比較は整数のまま行って、小数の誤差を避ける
+  function classifyPattern(counts, total) {
+    if (total < PATTERN_MIN) return 'pending';
+    var ca = counts.agree || 0;
+    var co = counts.oppose || 0;
+    var ce = counts.expand || 0;
+    var cd = counts.derail || 0;
+    var ci = counts.ignore || 0;
+    if (ca * 4 >= total && ce * 4 >= total && (ca + ce) * 10 >= total * 7) return 'kyoso';
+    if (co * 4 >= total && ce * 4 >= total && (co + ce) * 10 >= total * 6) return 'sesshu';
+    var cands = [
+      { key: 'agree', n: ca, ok: ca * 2 >= total },
+      { key: 'oppose', n: co, ok: co * 5 >= total * 2 },
+      { key: 'expand', n: ce, ok: ce * 5 >= total * 2 },
+      { key: 'derail', n: cd, ok: cd * 10 >= total * 3 },
+      { key: 'ignore', n: ci, ok: ci * 10 >= total * 3 }
+    ].filter(function (c) { return c.ok; });
+    if (!cands.length) return 'mixed';
+    cands.sort(function (x, y) { return y.n - x.n; });
+    return cands[0].key;
+  }
+
+  function buildPatternHtml() {
+    var rows = computeRelationships();
+    if (rows.length === 0) return emptyRelationHtml();
+    var legend = '<div class="trend-legend">' + REACTION_TYPES.map(function (r) {
+      return '<span class="legend-item"><span class="legend-dot seg-' + r.key + '"></span>' + r.label + '</span>';
+    }).join('') + '</div>';
+    var cards = rows.map(function (r) {
+      var key = classifyPattern(r.counts, r.total);
+      var p = PATTERNS[key];
+      var bar = REACTION_TYPES.map(function (t) {
+        var c = r.counts[t.key] || 0;
+        if (!c) return '';
+        return '<span class="ratio-seg seg-' + t.key + '" style="width:' + (c / r.total * 100) + '%"></span>';
+      }).join('');
+      var desc = (key === 'pending')
+        ? 'まだ' + r.total + '回分ですの。' + PATTERN_MIN + '回たまると型が付きますわ。'
+        : p.desc;
+      return '<div class="pattern-card"><div class="pattern-head"><span class="trend-name">' +
+        escapeHtml(r.from) + ' → ' + escapeHtml(r.to) + '</span>' +
+        '<span class="pattern-badge tone-' + p.tone + '">' + p.label + '</span></div>' +
+        '<div class="ratio-bar">' + bar + '</div>' +
+        '<div class="trend-detail">' + escapeHtml(countsText(r.counts)) + '(計' + r.total + '回)</div>' +
+        '<p class="pattern-desc">' + desc + '</p></div>';
+    }).join('');
+    return legend + cards +
+      '<p class="trend-foot">型は反応タグの割合から自動で決めていますの。過去の会議もすべて合わせた集計ですわ。</p>';
+  }
+
+  function buildSelfJudgeHtml() {
+    var all = [];
+    collectMeetings().forEach(function (m) {
+      (m.log || []).forEach(function (e) {
+        if (e.selfReaction && !e.mod && e.speaker) all.push({ meeting: m, entry: e });
+      });
+    });
+    if (all.length === 0) {
+      return '<p class="archive-empty">まだ自己判定が集まっていませんの。会議を始める前に「自己判定を依頼する」を選んでおくと、AIの返答の最後の1行を読み取って、議長のタグと比べられますわ。</p>';
+    }
+    var pairsAll = all.filter(function (x) { return x.entry.reaction; });
+    var head = '<p class="relation-hint" style="margin:0 0 10px;">AIの自己判定 ' + all.length +
+      '件のうち、議長のタグと比べられるのは ' + pairsAll.length + '件ですの。</p>';
+    if (pairsAll.length === 0) {
+      return head + '<p class="relation-hint">発言を貼り付けるときに「前の発言への反応」チップも選ぶと、ここで突き合わせられますわ。</p>';
+    }
+    var foot = '<p class="trend-foot">AIの自己判定は正解ではなく、「本人の自己解釈」というもうひとつの観測値ですの。件数が少ないうちは、傾向とまでは言えませんわ。</p>';
+
+    function lab(k) { return REACTION_LABEL[k] || k; }
+    function confOf(x) { return x.entry.selfConf || ''; }
+
+    // 申告された確度ごとの一致率(絞り込みの影響は受けない)
+    var CONF_LEVELS = [
+      { key: '高', label: '高' },
+      { key: '中', label: '中' },
+      { key: '低', label: '低' },
+      { key: '', label: '確度なし' }
+    ];
+    var confStat = {};
+    pairsAll.forEach(function (x) {
+      var c = confOf(x);
+      if (!confStat[c]) confStat[c] = { n: 0, same: 0 };
+      confStat[c].n += 1;
+      if (x.entry.reaction === x.entry.selfReaction) confStat[c].same += 1;
+    });
+    var confHtml = '<div class="label" style="margin:12px 0 6px;">AIが申告した確度ごとの一致率</div>' +
+      '<table class="relation-table"><thead><tr><th>確度</th><th>比較</th><th>一致</th><th>一致率</th></tr></thead><tbody>' +
+      CONF_LEVELS.filter(function (l) { return confStat[l.key]; }).map(function (l) {
+        var st = confStat[l.key];
+        return '<tr><td>' + l.label + '</td><td>' + st.n + '</td><td>' + st.same + '</td><td>' + pct(st.same / st.n) + '%</td></tr>';
+      }).join('') + '</tbody></table>';
+
+    var chipsHtml = '<div class="label" style="margin:14px 0 6px;">確度で絞り込む(下の表と一覧に反映)</div>' +
+      '<div class="genre-select">' + [
+        { v: '', l: 'すべて' }, { v: '高', l: '高' }, { v: '中', l: '中' }, { v: '低', l: '低' }
+      ].map(function (o) {
+        return '<button type="button" class="genre-chip conf-chip' + (selfConfFilter === o.v ? ' active' : '') +
+          '" data-conf="' + o.v + '">' + o.l + '</button>';
+      }).join('') + '</div>';
+
+    var pairs = selfConfFilter ? pairsAll.filter(function (x) { return confOf(x) === selfConfFilter; }) : pairsAll;
+    if (pairs.length === 0) {
+      return head + confHtml + chipsHtml +
+        '<p class="relation-hint">確度「' + selfConfFilter + '」の発言はまだありませんの。</p>' + foot;
+    }
+
+    var matrix = {};
+    var bySpeaker = {};
+    var mism = [];
+    var same = 0;
+    pairs.forEach(function (x) {
+      var c = x.entry.reaction;
+      var sr = x.entry.selfReaction;
+      if (!matrix[c]) matrix[c] = {};
+      matrix[c][sr] = (matrix[c][sr] || 0) + 1;
+      var sp = bySpeaker[x.entry.speaker];
+      if (!sp) sp = bySpeaker[x.entry.speaker] = { name: x.entry.speaker, n: 0, same: 0, gaps: {} };
+      sp.n += 1;
+      if (c === sr) {
+        same += 1;
+        sp.same += 1;
+      } else {
+        mism.push(x);
+        var gk = c + '>' + sr;
+        sp.gaps[gk] = (sp.gaps[gk] || 0) + 1;
+      }
+    });
+
+    var overall = '<p class="genre-summary" style="margin-top:12px;">' + (selfConfFilter ? '確度「' + selfConfFilter + '」の発言だけで見ると、' : '') +
+      '議長とAIの判定が一致したのは ' + same + ' / ' + pairs.length + '件(' + pct(same / pairs.length) + '%)ですの。</p>';
+
+    var matrixHtml = '<div class="label" style="margin:12px 0 6px;">縦が議長のタグ、横がAIの自己判定</div>' +
+      '<table class="relation-table self-matrix"><thead><tr><th>議長＼AI</th>' +
+      REACTION_TYPES.map(function (r) { return '<th>' + r.label + '</th>'; }).join('') +
+      '</tr></thead><tbody>' +
+      REACTION_TYPES.map(function (row) {
+        return '<tr><th>' + row.label + '</th>' + REACTION_TYPES.map(function (col) {
+          var n = (matrix[row.key] && matrix[row.key][col.key]) || 0;
+          var cls = row.key === col.key ? 'diag' : (n ? '' : 'zero');
+          return '<td class="' + cls + '">' + n + '</td>';
+        }).join('') + '</tr>';
+      }).join('') + '</tbody></table>';
+
+    var speakers = Object.keys(bySpeaker).map(function (k) { return bySpeaker[k]; }).sort(function (a, b) {
+      return b.n - a.n;
+    });
+    var speakerHtml = '<div class="label" style="margin:14px 0 6px;">AIごとの一致率</div>' +
+      '<table class="relation-table"><thead><tr><th>AI</th><th>比較</th><th>一致</th><th>主なズレ</th></tr></thead><tbody>' +
+      speakers.map(function (sp) {
+        var top = null;
+        Object.keys(sp.gaps).forEach(function (k) {
+          if (!top || sp.gaps[k] > sp.gaps[top]) top = k;
+        });
+        var gap = '―';
+        if (top) {
+          var parts = top.split('>');
+          gap = '議長は' + lab(parts[0]) + '、AIは' + lab(parts[1]) + '(' + sp.gaps[top] + '件)';
+        }
+        return '<tr><td>' + escapeHtml(sp.name) + '</td><td>' + sp.n + '</td><td>' +
+          pct(sp.same / sp.n) + '%</td><td>' + escapeHtml(gap) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+
+    mism.sort(function (a, b) { return (b.entry.time || 0) - (a.entry.time || 0); });
+    var listHtml;
+    if (mism.length === 0) {
+      listHtml = '<p class="relation-hint">食い違った発言はありませんの。</p>';
+    } else {
+      listHtml = mism.slice(0, 30).map(function (x) {
+        var e = x.entry;
+        var m = x.meeting;
+        return '<details class="mismatch-item"><summary>' + escapeHtml(e.speaker) +
+          (e.turn ? ' #' + e.turn : '') + '｜議長:' + lab(e.reaction) + ' / AI:' + lab(e.selfReaction) +
+          (e.selfConf ? '(確度' + e.selfConf + ')' : '') + '</summary>' +
+          '<div class="mismatch-body"><div class="mismatch-meta">' + escapeHtml(fmtDate(e.time)) + ' / ' +
+          escapeHtml((m.topic || '(議題なし)').slice(0, 30)) + '</div>' + escapeHtml(e.text) + '</div></details>';
+      }).join('') + (mism.length > 30 ? '<p class="relation-hint">新しい順に30件まで表示していますの。</p>' : '');
+    }
+    var listHead = '<div class="label" style="margin:14px 0 2px;">食い違った発言(タップで全文)</div>';
+
+    return head + confHtml + chipsHtml + overall + matrixHtml + speakerHtml + listHead + listHtml + foot;
+  }
+
+  function renderRelationPanel() {
+    var el = document.getElementById('relationPanel');
+    if (!relationPanelOpen) {
+      el.style.display = 'none';
+      el.innerHTML = '';
+      return;
+    }
+    el.style.display = 'block';
+
+    // 再描画で横スクロール位置が戻らないよう、描画前の位置を覚えておく
+    var scrolls = Array.prototype.map.call(el.querySelectorAll('.trend-scroll'), function (n) {
+      return n.scrollLeft;
+    });
+
+    var tabs = [
+      { key: 'table', label: '一覧' },
+      { key: 'trend', label: '時系列' },
+      { key: 'genre', label: 'ジャンル別' },
+      { key: 'pattern', label: 'パターン' },
+      { key: 'self', label: '自己判定' }
+    ];
+    var tabsHtml = '<div class="relation-tabs">' + tabs.map(function (t) {
+      return '<button type="button" class="small-btn rel-tab' + (relationTab === t.key ? ' active' : '') +
+        '" data-tab="' + t.key + '">' + t.label + '</button>';
+    }).join('') + '</div>';
+
+    var bodyHtml;
+    if (relationTab === 'trend') bodyHtml = buildTrendHtml();
+    else if (relationTab === 'genre') bodyHtml = buildGenreHtml();
+    else if (relationTab === 'pattern') bodyHtml = buildPatternHtml();
+    else if (relationTab === 'self') bodyHtml = buildSelfJudgeHtml();
+    else bodyHtml = buildTableHtml();
+
+    el.innerHTML =
+      '<div class="label">AI相性マップ(発言時に付けた反応タグの集計)</div>' +
+      tabsHtml + bodyHtml;
+
+    el.querySelectorAll('.trend-scroll').forEach(function (n, idx) {
+      n.scrollLeft = (scrolls[idx] !== undefined) ? scrolls[idx] : n.scrollWidth;
+    });
+    el.querySelectorAll('.rel-tab').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        relationTab = btn.getAttribute('data-tab');
+        renderRelationPanel();
+      });
+    });
+    el.querySelectorAll('.trend-bar').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var key = btn.getAttribute('data-key');
+        var i = parseInt(btn.getAttribute('data-i'), 10);
+        if (trendSelected && trendSelected.key === key && trendSelected.i === i) {
+          trendSelected = null;
+        } else {
+          trendSelected = { key: key, i: i };
+        }
+        renderRelationPanel();
+      });
+    });
+    el.querySelectorAll('.conf-chip').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        selfConfFilter = btn.getAttribute('data-conf');
+        renderRelationPanel();
+      });
+    });
+  }
+
+  function renderUtilityPreview() {
+    var container = document.getElementById('utilityPreviewContainer');
+    if (!utilityPreview) {
+      container.style.display = 'none';
+      container.innerHTML = '';
+      return;
+    }
+    container.style.display = 'block';
+    container.innerHTML =
+      '<div class="preview-box">' +
+      '<div class="label"><span>' + escapeHtml(utilityPreview.label) + '</span>' +
+      '<span><button class="small-btn" id="utilCopyBtn">コピー</button> ' +
+      '<button class="small-btn" id="utilCloseBtn">閉じる</button></span></div>' +
+      '<textarea readonly id="utilPreviewText">' + escapeHtml(utilityPreview.text) + '</textarea>' +
+      '</div>';
+    document.getElementById('utilCopyBtn').addEventListener('click', function () {
+      copyToClipboard(utilityPreview.text);
+    });
+    document.getElementById('utilCloseBtn').addEventListener('click', function () {
+      utilityPreview = null;
+      renderUtilityPreview();
+    });
+  }
+
+  function buildSummaryPrompt() {
+    var body = state.log.map(function (e) {
+      return '【' + e.speaker + '】\n' + e.text;
+    }).join('\n\n');
+    return 'あなたはAI井戸端会議の記録係です。\n\n' +
+      '今回の議題:\n「' + state.topic + '」\n\n' +
+      'これまでの発言は以下の通りです。\n\n' + body + '\n\n' +
+      'ここまでの議論をまとめてください。各参加者の主張の要点、意見が分かれた点、' +
+      '特に面白かった視点を整理してください。';
+  }
+
+  function onSummary() {
+    var text = buildSummaryPrompt();
+    utilityPreview = { label: 'まとめ依頼文', text: text };
+    renderUtilityPreview();
+    copyToClipboard(text);
+  }
+
+  function buildExportDocument() {
+    var lines = [];
+    lines.push('# AI井戸端会議 議事録');
+    lines.push('');
+    lines.push('議題: ' + state.topic);
+    lines.push('');
+    lines.push('総ターン数: ' + state.turnCount);
+    lines.push('');
+    lines.push('## 発言記録');
+    lines.push('');
+    state.log.forEach(function (e) {
+      var label = e.mod ? 'ひとこと' : (e.intrude ? '乱入' : ('#' + e.turn));
+      var tags = [];
+      if (e.derail) tags.push('脱線');
+      if (e.reaction) tags.push(e.reactionTo + 'に' + (REACTION_LABEL[e.reaction] || e.reaction));
+      if (e.selfReaction) tags.push('AI自己判定:' + (REACTION_LABEL[e.selfReaction] || e.selfReaction));
+      var tagStr = tags.length ? '［' + tags.join('・') + '］' : '';
+      lines.push('### ' + label + ' ' + e.speaker + tagStr + '（' + fmtTime(e.time) + '）');
+      lines.push('');
+      lines.push(e.text);
+      lines.push('');
+    });
+    return lines.join('\n');
+  }
+
+  function buildExportFilename() {
+    var d = new Date();
+    function pad(n) { return String(n).padStart(2, '0'); }
+    return 'ai-idobata-kaigi_' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) +
+      '_' + pad(d.getHours()) + pad(d.getMinutes()) + '.md';
+  }
+
+  function onExport() {
+    var text = buildExportDocument();
+    var filename = buildExportFilename();
+    if (downloadsApi) {
+      downloadsApi.save({ filename: filename, data: text }).then(function () {
+        showToast('書き出しましたわ');
+      }).catch(function (err) {
+        if (err && err.code === 'declined') return;
+        utilityPreview = { label: 'NotebookLM用資料', text: text };
+        renderUtilityPreview();
+        copyToClipboard(text);
+      });
+    } else {
+      utilityPreview = { label: 'NotebookLM用資料', text: text };
+      renderUtilityPreview();
+      copyToClipboard(text);
+    }
+  }
+
+  function genreChipsHtml() {
+    return '<div class="genre-select" id="genreSelect">' + GENRES.map(function (g) {
+      return '<button type="button" class="genre-chip' + (state.genre === g.key ? ' active' : '') +
+        '" data-genre="' + g.key + '">' + g.label + '</button>';
+    }).join('') + '</div>';
+  }
+
+  function bindGenreChips() {
+    var box = document.getElementById('genreSelect');
+    if (!box) return;
+    box.querySelectorAll('.genre-chip').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var key = btn.getAttribute('data-genre');
+        state.genre = (state.genre === key) ? '' : key;
+        if (state.started) {
+          genrePickerOpen = false;
+          saveState();
+        }
+        renderTopicBar();
+        renderRelationPanel();
+      });
+    });
+  }
+
+  function renderTopicBar() {
+    var el = document.getElementById('topicBar');
+    if (!state.started) {
+      var chipsHtml = ALL_MEMBERS.map(function (name) {
+        var cls = CLASS[name];
+        var checked = state.order.indexOf(name) !== -1;
+        return '<label class="member-chip' + (checked ? ' checked ' + cls : '') + '" data-member="' + name + '">' +
+          '<input type="checkbox" value="' + name + '"' + (checked ? ' checked' : '') + '>' + name +
+          '</label>';
+      }).join('');
+
+      el.innerHTML =
+        '<div class="label">議題を決めてくださいまし</div>' +
+        '<textarea id="topicInput" placeholder="例：AIだけで100年間活動したら何が起こるか？">' +
+        escapeHtml(state.topic) + '</textarea>' +
+        '<div class="label" style="margin-top:12px;">参加させるAIを選んでくださいまし(2人以上)</div>' +
+        '<div class="member-select" id="memberSelect">' + chipsHtml + '</div>' +
+        '<div class="label" style="margin-top:12px;">ジャンル(任意・相性をジャンル別に見るときに使いますの)</div>' +
+        genreChipsHtml() +
+        '<div class="label" style="margin-top:12px;">AIに自己判定を頼む(返答の最後に1行足してもらいますの)</div>' +
+        '<div class="genre-select"><button type="button" class="genre-chip' + (state.selfJudge ? ' active' : '') + '" id="selfJudgeToggle">自己判定を依頼する(' + (state.selfJudge ? 'ON' : 'OFF') + ')</button></div>' +
+        '<div class="label" style="margin-top:12px;">AIへの依頼文を補強する(参加者・直近の流れ・宛先確認を足しますの)</div>' +
+        '<div class="genre-select"><button type="button" class="genre-chip' + (state.guide ? ' active' : '') + '" id="guideToggle">依頼文を補強する(' + (state.guide ? 'ON' : 'OFF') + ')</button></div>' +
+        '<div class="row"><button class="primary-btn" id="startBtn">会議を始める</button></div>';
+
+      document.getElementById('topicInput').addEventListener('input', function (e) {
+        state.topic = e.target.value;
+      });
+      document.getElementById('memberSelect').querySelectorAll('input[type="checkbox"]').forEach(function (box) {
+        box.addEventListener('change', function () {
+          var name = box.value;
+          var idx = state.order.indexOf(name);
+          if (box.checked && idx === -1) {
+            state.order = ALL_MEMBERS.filter(function (m) {
+              return state.order.indexOf(m) !== -1 || m === name;
+            });
+          } else if (!box.checked && idx !== -1) {
+            state.order.splice(idx, 1);
+          }
+          renderTopicBar();
+        });
+      });
+      bindGenreChips();
+      document.getElementById('selfJudgeToggle').addEventListener('click', function () {
+        state.selfJudge = !state.selfJudge;
+        renderTopicBar();
+      });
+      document.getElementById('guideToggle').addEventListener('click', function () {
+        state.guide = !state.guide;
+        renderTopicBar();
+      });
+      document.getElementById('startBtn').addEventListener('click', onStart);
+    } else {
+      var genreLabel = state.genre ? GENRE_LABEL[state.genre] : '';
+      el.innerHTML =
+        '<div class="label" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
+        '<span>議題</span><span>' +
+        (genreLabel ? '<span class="tag-badge">' + escapeHtml(genreLabel) + '</span> ' : '') +
+        (state.selfJudge ? '<span class="tag-badge">自己判定あり</span> ' : '') +
+        '<button type="button" class="ghost-btn" id="genreEditBtn" style="padding:2px 10px;font-size:0.72rem;">' +
+        (genreLabel ? 'ジャンル変更' : 'ジャンルを付ける') + '</button></span></div>' +
+        '<div class="topic-display">' + escapeHtml(state.topic) + '</div>' +
+        (genrePickerOpen ? '<div style="margin-top:10px;">' + genreChipsHtml() + '</div>' : '');
+      document.getElementById('genreEditBtn').addEventListener('click', function () {
+        genrePickerOpen = !genrePickerOpen;
+        renderTopicBar();
+      });
+      bindGenreChips();
+    }
+  }
+
+  function onStart() {
+    var topic = (state.topic || '').trim();
+    if (!topic) {
+      showToast('議題を入力してくださいまし');
+      return;
+    }
+    if (!state.order || state.order.length < 2) {
+      showToast('参加AIを2人以上選んでくださいまし');
+      return;
+    }
+    state.topic = topic;
+    state.started = true;
+    state.turnIndex = 0;
+    state.meetingId = 'm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+    state.startedAt = Date.now();
+    var text = buildPrompt(topic, null, null, '', state.order[0]);
+    state.lastGenerated = text;
+    state.lastGeneratedFor = state.order[0];
+    saveState();
+    render();
+    copyToClipboard(text);
+  }
+
+  function renderLog() {
+    var el = document.getElementById('logArea');
+    if (state.log.length === 0) {
+      el.innerHTML = '<p class="empty-state">議題を決めて、会議を始めてくださいまし。発言が積み重なるとここに並びますわ。</p>';
+      return;
+    }
+
+    var filterHtml = '<div class="log-filter">' +
+      '<button class="ghost-btn" id="derailFilterBtn">' + (hideDerail ? '脱線も表示' : '脱線を隠す') + '</button>' +
+      '</div>';
+
+    var entries = state.log;
+    if (hideDerail) {
+      entries = entries.filter(function (e) { return !e.derail; });
+    }
+    var hiddenCount = 0;
+    if (!logExpanded && entries.length > LOG_PAGE_SIZE) {
+      hiddenCount = entries.length - LOG_PAGE_SIZE;
+      entries = entries.slice(-LOG_PAGE_SIZE);
+    }
+
+    var loadMoreHtml = '';
+    if (hiddenCount > 0) {
+      loadMoreHtml = '<div class="log-load-more">' +
+        '<button class="ghost-btn" id="logLoadMoreBtn">これより前を表示（あと' + hiddenCount + '件）</button>' +
+        '</div>';
+    } else if (logExpanded && entries.length > LOG_PAGE_SIZE) {
+      loadMoreHtml = '<div class="log-load-more">' +
+        '<button class="ghost-btn" id="logCollapseBtn">直近' + LOG_PAGE_SIZE + '件だけ表示</button>' +
+        '</div>';
+    }
+
+    // 各発言の「ひとつ前の発言者」(タグ付けの対象)。乱入とひとことには付けられない
+    var prevSpeakerOf = {};
+    var lastSp = null;
+    state.log.forEach(function (e) {
+      if (e.mod) return;
+      prevSpeakerOf[e.id] = e.intrude ? null : lastSp;
+      if (!e.intrude) lastSp = e.speaker;
+    });
+
+    var html = entries.map(function (entry) {
+      var cls = entry.mod ? 'moderator' : (CLASS[entry.speaker] || '');
+      var turnLabel = entry.mod ? 'ひとこと' : (entry.intrude ? '乱入' : ('#' + entry.turn));
+      var icon = entry.mod ? '…' : (ICON[entry.speaker] || '');
+      var badges = '';
+      if (entry.intrude) badges += '<span class="tag-badge intrude-badge">乱入</span>';
+      if (entry.derail) badges += '<span class="tag-badge derail-badge">脱線</span>';
+      if (entry.reaction) badges += '<span class="tag-badge reaction-badge">→' + entry.reactionTo + 'に' + (REACTION_LABEL[entry.reaction] || entry.reaction) + '</span>';
+      if (entry.selfReaction) {
+        var mism = entry.reaction && entry.reaction !== entry.selfReaction;
+        badges += '<span class="tag-badge self-badge' + (mism ? ' mismatch' : '') + '">AI自己判定:' +
+          (REACTION_LABEL[entry.selfReaction] || entry.selfReaction) +
+          (entry.selfConf ? '(確度' + entry.selfConf + ')' : '') +
+          (mism ? '・議長と不一致' : '') + '</span>';
+      }
+      var derailToggleBtn = entry.mod ? '' :
+        '<button class="small-btn derail-toggle" data-id="' + entry.id + '">' + (entry.derail ? '脱線を外す' : '脱線にする') + '</button>';
+      var prevSp = prevSpeakerOf[entry.id];
+      var tagEditBtn = (!entry.mod && !entry.intrude && prevSp) ?
+        '<button class="small-btn tag-edit-toggle" data-id="' + entry.id + '">' + (entry.reaction ? 'タグを直す' : 'タグを付ける') + '</button>' : '';
+      var editorHtml = '';
+      if (tagEditBtn && editingTagId === entry.id) {
+        editorHtml = '<div class="tag-editor"><span>→' + escapeHtml(prevSp) + 'への反応:</span>' +
+          REACTION_TYPES.map(function (r) {
+            return '<button type="button" class="genre-chip edit-chip' + (entry.reaction === r.key ? ' active' : '') +
+              '" data-id="' + entry.id + '" data-key="' + r.key + '">' + r.label + '</button>';
+          }).join('') +
+          '<button type="button" class="genre-chip edit-chip' + (!entry.reaction ? ' active' : '') +
+          '" data-id="' + entry.id + '" data-key="">タグなし</button></div>';
+      }
+      var actionsHtml = derailToggleBtn + tagEditBtn;
+      return '<div class="log-entry ' + cls + (entry.derail ? ' is-derail' : '') + '">' +
+        '<div class="meta">' +
+        '<span class="turn-no">' + turnLabel + '</span>' +
+        '<span class="speaker-tag ' + cls + '">' + icon + ' ' + entry.speaker + '</span>' +
+        '<span class="time">' + fmtTime(entry.time) + '</span>' +
+        badges +
+        '</div>' +
+        '<div class="text">' + escapeHtml(entry.text) + '</div>' +
+        (actionsHtml ? '<div class="entry-actions">' + actionsHtml + '</div>' : '') +
+        editorHtml +
+        '</div>';
+    }).join('');
+
+    el.innerHTML = filterHtml + loadMoreHtml + html;
+
+    document.getElementById('derailFilterBtn').addEventListener('click', function () {
+      hideDerail = !hideDerail;
+      renderLog();
+    });
+    el.querySelectorAll('.derail-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        onToggleDerail(btn.getAttribute('data-id'));
+      });
+    });
+    el.querySelectorAll('.tag-edit-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-id');
+        editingTagId = (editingTagId === id) ? null : id;
+        renderLog();
+      });
+    });
+    el.querySelectorAll('.edit-chip').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        onSetReaction(btn.getAttribute('data-id'), btn.getAttribute('data-key'));
+      });
+    });
+    var loadMoreBtn = document.getElementById('logLoadMoreBtn');
+    if (loadMoreBtn) {
+      loadMoreBtn.addEventListener('click', function () {
+        logExpanded = true;
+        renderLog();
+      });
+    }
+    var collapseBtn = document.getElementById('logCollapseBtn');
+    if (collapseBtn) {
+      collapseBtn.addEventListener('click', function () {
+        logExpanded = false;
+        renderLog();
+        var stickyTop = document.getElementById('stickyTop');
+        stickyTop.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  }
+
+  // AIが「別のAI宛の文章だったようですが…」と指摘してきた返答を、貼り付けの時点で見つける。
+  // 指摘は冒頭に書くよう頼んであるので、先頭の300文字だけを見る
+  var MISADDRESS_RE = /(ChatGPT|Claude|Gemini|Perplexity)\s*(?:さん)?\s*宛て?(?:の)?\s*(?:文章|文面|メッセージ|依頼文|プロンプト|お願い|内容)?\s*(?:だった|でした|だと思|のよう|みたい|かと思|らしい)/;
+
+  function detectMisaddress(text) {
+    var m = MISADDRESS_RE.exec(String(text).slice(0, 300));
+    return m ? m[1] : null;
+  }
+
+  // 疑わしいときは記録せずに注意を出す。「このまま記録する」を押した直後の1回だけは素通しする
+  function checkMisaddress(text, expected, override) {
+    if (override) {
+      misaddressNotice = null;
+      return false;
+    }
+    var hit = detectMisaddress(text);
+    if (!hit) {
+      misaddressNotice = null;
+      return false;
+    }
+    misaddressNotice = { mentioned: hit, expected: expected };
+    rerenderKeepingInputs();
+    var n = document.getElementById('misaddressNotice');
+    if (n && n.scrollIntoView) n.scrollIntoView({ block: 'nearest' });
+    return true;
+  }
+
+  function misaddressNoticeHtml() {
+    if (!misaddressNotice) return '';
+    return '<div class="misaddress-notice" id="misaddressNotice">' +
+      '<div>この返答に、「' + escapeHtml(misaddressNotice.mentioned) + '宛の文章だったようですが…」という趣旨の指摘が含まれています。' +
+      'いま記録しようとしているのは' + escapeHtml(misaddressNotice.expected) + 'の発言ですので、別のAIに貼り間違えたのかもしれませんの。</div>' +
+      '<div class="misaddress-actions">' +
+      '<button type="button" class="ghost-btn" id="misaddressRetryBtn">貼り直す</button>' +
+      '<button type="button" class="small-btn" id="misaddressForceBtn">このまま記録する</button>' +
+      '</div></div>';
+  }
+
+  function bindMisaddress() {
+    var ri = document.getElementById('replyInput');
+    if (ri) {
+      ri.addEventListener('input', function () {
+        if (!misaddressNotice) return;
+        misaddressNotice = null;
+        var n = document.getElementById('misaddressNotice');
+        if (n && n.parentNode) n.parentNode.removeChild(n);
+      });
+    }
+    var retry = document.getElementById('misaddressRetryBtn');
+    if (retry) {
+      retry.addEventListener('click', function () {
+        misaddressNotice = null;
+        rerenderKeepingInputs();
+        var r = document.getElementById('replyInput');
+        if (r) {
+          r.value = '';
+          r.focus();
+        }
+      });
+    }
+    var force = document.getElementById('misaddressForceBtn');
+    if (force) {
+      force.addEventListener('click', function () {
+        misaddressOverride = true;
+        if (state.pendingIntrude) onIntrudeNext(); else onNext();
+      });
+    }
+  }
+
+  // 反応チップや乱入ボタンなどでパネルを描き直しても、入力途中の文章が消えないようにする
+  function rerenderKeepingInputs() {
+    var r = document.getElementById('replyInput');
+    var a = document.getElementById('asideInput');
+    var replyValue = r ? r.value : '';
+    var asideValue = a ? a.value : '';
+    renderTurnPanel();
+    var r2 = document.getElementById('replyInput');
+    var a2 = document.getElementById('asideInput');
+    if (r2 && replyValue) r2.value = replyValue;
+    if (a2 && asideValue) a2.value = asideValue;
+  }
+
+  function renderTurnPanel() {
+    var panel = document.getElementById('turnPanel');
+    var inner = document.getElementById('turnPanelInner');
+
+    if (archivePanelOpen || relationPanelOpen) {
+      panel.style.display = 'none';
+      return;
+    }
+
+    if (!state.started) {
+      panel.style.display = 'none';
+      return;
+    }
+    panel.style.display = 'block';
+
+    var previewHtml = '';
+    if (state.lastGenerated) {
+      previewHtml =
+        '<div class="preview-box">' +
+        '<div class="label"><span>' + state.lastGeneratedFor + '用の文章</span>' +
+        '<button class="small-btn" id="recopyBtn">再コピー</button></div>' +
+        '<textarea readonly id="previewText">' + escapeHtml(state.lastGenerated) + '</textarea>' +
+        '</div>';
+    }
+
+    if (state.pendingIntrude) {
+      var iSpeaker = state.pendingIntrude;
+      var iCls = CLASS[iSpeaker] || '';
+      inner.innerHTML =
+        '<div class="turn-topic">議題: ' + escapeHtml(state.topic) + '</div>' +
+        '<span class="speaker-badge ' + iCls + '">' + (ICON[iSpeaker] || '') + ' ' + iSpeaker + 'が乱入！</span>' +
+        '<textarea id="replyInput" placeholder="' + iSpeaker + 'の乱入発言をここに貼り付けてくださいまし"></textarea>' +
+        misaddressNoticeHtml() +
+        '<div class="row">' +
+        '<button class="ghost-btn" id="intrudeCancelBtn">乱入をやめる</button>' +
+        '<button class="primary-btn" id="nextBtn">乱入をログに追加</button>' +
+        '</div>' +
+        previewHtml;
+
+      document.getElementById('nextBtn').addEventListener('click', onIntrudeNext);
+      document.getElementById('intrudeCancelBtn').addEventListener('click', onIntrudeCancel);
+      bindMisaddress();
+      var recopy0 = document.getElementById('recopyBtn');
+      if (recopy0) recopy0.addEventListener('click', function () { copyToClipboard(state.lastGenerated); });
+      panel.scrollTop = 0;
+      return;
+    }
+
+    var speaker = currentSpeaker();
+    var cls = CLASS[speaker];
+
+    var cardsHtml = '<div class="mod-cards">' + MOD_CARDS.map(function (c, i) {
+      return '<button class="small-btn mod-card-btn" data-i="' + i + '">' + c.label + '</button>';
+    }).join('') + '</div>';
+
+    var reactionHtml = '';
+    var reactTarget = lastRealEntry();
+    if (reactTarget) {
+      reactionHtml = '<div class="reaction-row">' +
+        '<span class="hint">前の(' + reactTarget.speaker + 'の)発言への反応(任意)：</span>' +
+        REACTION_TYPES.map(function (r) {
+          return '<button class="small-btn tag-chip' + (pendingReaction === r.key ? ' active' : '') + '" data-key="' + r.key + '">' + r.label + '</button>';
+        }).join('') +
+        '</div>';
+    }
+
+    var intrudePickerHtml = '';
+    if (intrudePickerOpen) {
+      intrudePickerHtml = '<div class="intrude-picker">' +
+        ALL_MEMBERS.map(function (name) {
+          return '<button class="small-btn intrude-pick-btn" data-name="' + name + '">' + name + '</button>';
+        }).join('') + '</div>';
+    }
+
+    inner.innerHTML =
+      '<div class="turn-topic">議題: ' + escapeHtml(state.topic) + '</div>' +
+      '<span class="speaker-badge ' + cls + '">' + (ICON[speaker] || '') + ' ' + speaker + 'の番ですわ</span>' +
+      exchangeWarningHtml() +
+      '<textarea id="replyInput" placeholder="' + speaker + 'の発言をここに貼り付けてくださいまし"></textarea>' +
+      misaddressNoticeHtml() +
+      reactionHtml +
+      '<div class="label" style="margin-top:8px;">議長アクションカード(任意、ひとことに挿入)</div>' +
+      cardsHtml +
+      '<textarea id="asideInput" class="aside-textarea" placeholder="ひとこと・相槌があれば(任意、次のAIにも軽く伝わりますの)"></textarea>' +
+      '<div class="row">' +
+      '<button class="ghost-btn" id="intrudeBtn">乱入させる</button>' +
+      '<button class="primary-btn" id="nextBtn">次のAI用にコピー</button>' +
+      '</div>' +
+      intrudePickerHtml +
+      previewHtml;
+
+    document.getElementById('nextBtn').addEventListener('click', onNext);
+    bindMisaddress();
+    var recopy = document.getElementById('recopyBtn');
+    if (recopy) {
+      recopy.addEventListener('click', function () {
+        copyToClipboard(state.lastGenerated);
+      });
+    }
+    document.getElementById('intrudeBtn').addEventListener('click', function () {
+      intrudePickerOpen = !intrudePickerOpen;
+      rerenderKeepingInputs();
+    });
+    inner.querySelectorAll('.intrude-pick-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        onIntrudeChoose(btn.getAttribute('data-name'));
+      });
+    });
+    inner.querySelectorAll('.mod-card-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var c = MOD_CARDS[parseInt(btn.getAttribute('data-i'), 10)];
+        var aside = document.getElementById('asideInput');
+        if (aside) aside.value = c.text;
+      });
+    });
+    inner.querySelectorAll('.tag-chip').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var key = btn.getAttribute('data-key');
+        pendingReaction = (pendingReaction === key) ? null : key;
+        rerenderKeepingInputs();
+      });
+    });
+    panel.scrollTop = 0;
+  }
+
+  function onNext() {
+    var override = misaddressOverride;
+    misaddressOverride = false;
+    var input = document.getElementById('replyInput');
+    var text = input.value.trim();
+    if (!text) {
+      showToast(currentSpeaker() + 'の発言を貼り付けてくださいまし');
+      return;
+    }
+    if (checkMisaddress(text, currentSpeaker(), override)) return;
+    var asideInput = document.getElementById('asideInput');
+    var asideText = asideInput ? asideInput.value.trim() : '';
+
+    var speaker = currentSpeaker();
+    var reactTarget = lastRealEntry();
+    var judged = state.selfJudge ? extractSelfJudgment(text) : { text: text, judge: null };
+    if (!judged.text) judged = { text: text, judge: null };
+    text = judged.text;
+    state.turnCount += 1;
+    var entry = {
+      id: genId('e'),
+      turn: state.turnCount,
+      speaker: speaker,
+      time: Date.now(),
+      text: text
+    };
+    if (pendingReaction && reactTarget) {
+      entry.reaction = pendingReaction;
+      entry.reactionTo = reactTarget.speaker;
+    }
+    if (judged.judge) {
+      entry.selfReaction = judged.judge.key;
+      if (judged.judge.conf) entry.selfConf = judged.judge.conf;
+    }
+    state.log.push(entry);
+
+    if (asideText) {
+      state.log.push({
+        id: genId('m'),
+        turn: null,
+        speaker: '議長',
+        time: Date.now(),
+        text: asideText,
+        mod: true
+      });
+    }
+
+    pendingReaction = null;
+    state.turnIndex = (state.turnIndex + 1) % state.order.length;
+    var nextSpeaker = currentSpeaker();
+    var promptText = buildPrompt(state.topic, speaker, text, asideText, nextSpeaker);
+    state.lastGenerated = promptText;
+    state.lastGeneratedFor = nextSpeaker;
+
+    saveState();
+    render();
+    copyToClipboard(promptText);
+
+    var logArea = document.getElementById('logArea');
+    logArea.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }
+
+  function onIntrudeChoose(name) {
+    var lastEntry = lastSpokenEntry();
+    var text = buildIntrudePrompt(state.topic, lastEntry, name);
+    state.pendingIntrude = name;
+    state.lastGenerated = text;
+    state.lastGeneratedFor = name;
+    intrudePickerOpen = false;
+    saveState();
+    render();
+    copyToClipboard(text);
+  }
+
+  function onIntrudeCancel() {
+    state.pendingIntrude = null;
+    var last = lastSpokenEntry();
+    var promptText = last
+      ? buildPrompt(state.topic, last.speaker, last.text, '', currentSpeaker())
+      : buildPrompt(state.topic, null, null, '', currentSpeaker());
+    state.lastGenerated = promptText;
+    state.lastGeneratedFor = currentSpeaker();
+    saveState();
+    render();
+    showToast('乱入をやめましたわ');
+  }
+
+  function onIntrudeNext() {
+    var override = misaddressOverride;
+    misaddressOverride = false;
+    var input = document.getElementById('replyInput');
+    var text = input.value.trim();
+    var intruder = state.pendingIntrude;
+    if (!text) {
+      showToast(intruder + 'の乱入発言を貼り付けてくださいまし');
+      return;
+    }
+    if (checkMisaddress(text, intruder, override)) return;
+    var judgedI = state.selfJudge ? extractSelfJudgment(text) : { text: text, judge: null };
+    if (!judgedI.text) judgedI = { text: text, judge: null };
+    text = judgedI.text;
+    var iEntry = {
+      id: genId('i'),
+      turn: null,
+      speaker: intruder,
+      time: Date.now(),
+      text: text,
+      intrude: true
+    };
+    if (judgedI.judge) {
+      iEntry.selfReaction = judgedI.judge.key;
+      if (judgedI.judge.conf) iEntry.selfConf = judgedI.judge.conf;
+    }
+    state.log.push(iEntry);
+    state.pendingIntrude = null;
+
+    var nextSpeaker = currentSpeaker();
+    var promptText = buildPrompt(state.topic, intruder, text, '', nextSpeaker);
+    state.lastGenerated = promptText;
+    state.lastGeneratedFor = nextSpeaker;
+
+    saveState();
+    render();
+    copyToClipboard(promptText);
+
+    var logArea = document.getElementById('logArea');
+    logArea.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }
+
+  // 反応タグの付け直し。反応先は、その発言より前にいた直近の(乱入・ひとことを除く)発言者
+  function onSetReaction(id, key) {
+    var idx = -1;
+    for (var i = 0; i < state.log.length; i++) {
+      if (state.log[i].id === id) { idx = i; break; }
+    }
+    if (idx === -1) return;
+    var prev = null;
+    for (var j = idx - 1; j >= 0; j--) {
+      if (!state.log[j].mod && !state.log[j].intrude) { prev = state.log[j]; break; }
+    }
+    if (!prev) return;
+    var entry = state.log[idx];
+    if (key) {
+      entry.reaction = key;
+      entry.reactionTo = prev.speaker;
+    } else {
+      delete entry.reaction;
+      delete entry.reactionTo;
+    }
+    editingTagId = null;
+    saveState();
+    renderLog();
+    renderRelationPanel();
+  }
+
+  function onToggleDerail(id) {
+    var entry = state.log.filter(function (e) { return e.id === id; })[0];
+    if (!entry) return;
+    entry.derail = !entry.derail;
+    saveState();
+    renderLog();
+  }
+
+  function onReset() {
+    if (!confirm('会議のログをすべて削除して最初からやり直しますの。よろしいですか？')) return;
+    if (state.started && state.log.length > 0) {
+      mergeMeetingIntoArchive(buildCurrentMeetingRecord());
+      saveArchiveStore();
+    }
+    state = {
+      topic: '',
+      started: false,
+      turnIndex: 0,
+      turnCount: 0,
+      log: [],
+      lastGenerated: '',
+      lastGeneratedFor: '',
+      order: DEFAULT_ORDER.slice(),
+      meetingId: '',
+      startedAt: null,
+      pendingIntrude: null,
+      genre: '',
+      selfJudge: true,
+      guide: true
+    };
+    genrePickerOpen = false;
+    editingTagId = null;
+    misaddressNotice = null;
+    misaddressOverride = false;
+    logExpanded = false;
+    pendingReaction = null;
+    saveState();
+    render();
+    showToast('リセットしましたわ（この会議はアーカイブに残っていますの）');
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  document.getElementById('resetBtn').addEventListener('click', onReset);
+  document.getElementById('archiveToggleBtn').addEventListener('click', function () {
+    archivePanelOpen = !archivePanelOpen;
+    if (archivePanelOpen) relationPanelOpen = false;
+    renderArchivePanel();
+    renderRelationPanel();
+    rerenderKeepingInputs();
+  });
+  document.getElementById('relationToggleBtn').addEventListener('click', function () {
+    relationPanelOpen = !relationPanelOpen;
+    if (relationPanelOpen) archivePanelOpen = false;
+    renderArchivePanel();
+    renderRelationPanel();
+    rerenderKeepingInputs();
+  });
+  document.getElementById('archiveFileInput').addEventListener('change', onArchiveFileSelected);
+
+  (function initScrollWatch() {
+    var stickyTop = document.getElementById('stickyTop');
+    var backToTop = document.getElementById('backToTop');
+    window.addEventListener('scroll', function () {
+      var scrolled = window.scrollY > 40;
+      stickyTop.classList.toggle('is-stuck', scrolled);
+      backToTop.style.display = window.scrollY > 400 ? 'block' : 'none';
+    }, { passive: true });
+    backToTop.addEventListener('click', function () {
+      stickyTop.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  })();
+
+  render();
+})();
+</script>
+
+</body>
+</html>
